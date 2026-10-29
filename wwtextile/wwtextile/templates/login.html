@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign in · {% endblock %}
+{% block auth %}
+<div class="auth-wrap">
+  <form class="auth-card" method="post" action="/login">
+    <h1>WW Textile</h1>
+    <p class="muted">Sign in to continue.</p>
+    {% if error %}<div class="toast error" role="alert">{{ error }}</div>{% endif %}
+    {% if cfg.env == 'demo' %}<div class="notice small">Demo environment. Accounts: admin, ceo, manager1, store1, prod1, gate1, fin1. The shared demo password is set by <span class="mono">WW_DEMO_PASSWORD</span> (see README).</div>{% endif %}
+    <input type="hidden" name="lcsrf" value="{{ lcsrf }}"><input type="hidden" name="next" value="{{ next }}">
+    <div class="field"><label for="username">Username</label><input id="username" name="username" type="text" value="{{ username }}" autocomplete="username" autofocus required></div>
+    <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

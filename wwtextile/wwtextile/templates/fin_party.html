@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ st.party.name }} statement · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ st.party.name }}</h1><p>Statement of account — {{ bal.direction }}. Posted entries only.</p></div><div class="actions"><a class="btn btn-secondary" href="/finance">Finance</a><a class="btn btn-secondary" href="/reports/party-statement?party_id={{ st.party.id }}">Print / CSV</a></div></div>
+{% if err %}<div class="toast error" role="alert">{{ err }}</div>{% endif %}
+<form class="filters" method="get"><div class="field"><label for="date_from">From</label><input id="date_from" type="date" name="date_from" value="{{ d1 }}"></div><div class="field"><label for="date_to">To</label><input id="date_to" type="date" name="date_to" value="{{ d2 }}"></div><button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/finance/parties/{{ st.party.id }}">Clear filters</a></form>
+<div class="grid cols-3"><div class="metric"><span class="label">{{ bal.charged_label }}</span><span class="value">{{ bal.charged|money(cfg.currency) }}</span></div><div class="metric"><span class="label">{{ bal.settled_label }}</span><span class="value">{{ bal.settled|money(cfg.currency) }}</span></div><div class="metric"><span class="label">Balance</span><span class="value">{{ bal.balance|money(cfg.currency) }}</span></div></div>
+<div class="table-wrap mt-1"><table><thead><tr><th>Date</th><th>Entry</th><th>Type</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>
+<tr><td colspan="5"><em>Opening balance</em></td><td class="num">{{ st.opening|money(cfg.currency) }}</td></tr>
+{% for r in st.rows %}<tr><td>{{ r.entry.entry_date }}</td><td><a href="/finance/entries/{{ r.entry.id }}">{{ r.entry.entry_no }}</a></td><td>{{ kinds.get(r.entry.kind) }}</td><td class="num">{{ r.signed|money(cfg.currency) if r.signed > 0 }}</td><td class="num">{{ (-r.signed)|money(cfg.currency) if r.signed < 0 }}</td><td class="num">{{ r.running|money(cfg.currency) }}</td></tr>{% endfor %}
+<tr><td colspan="3"><strong>Closing</strong></td><td class="num">{{ st.debit_total|money(cfg.currency) }}</td><td class="num">{{ st.credit_total|money(cfg.currency) }}</td><td class="num"><strong>{{ st.closing|money(cfg.currency) }}</strong></td></tr></tbody></table></div>
+{% endblock %}

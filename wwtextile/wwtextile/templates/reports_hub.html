@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Reports · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Reports</h1><p>Each report is computed once from the records and rendered as a table, a print layout and a CSV — so the totals always agree. Totals are never mixed across units.</p></div></div>
+{% for g, items in groups.items() %}<div class="card"><h2>{{ g }}</h2><div class="table-wrap"><table><tbody>
+{% for key, spec in items %}<tr><td class="col-key"><a href="/reports/{{ key }}">{{ spec.title }}</a></td><td class="muted small">{{ spec.desc }}</td></tr>{% endfor %}</tbody></table></div></div>{% endfor %}
+{% endblock %}

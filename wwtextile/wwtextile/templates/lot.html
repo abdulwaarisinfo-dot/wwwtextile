@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Lot {{ t.lot['lot_no'] }} · {% endblock %}
+{% block content %}
+{% set lot = t.lot %}{% set s = t.summary %}{% set unit = lot['unit'] %}
+<div class="page-head">
+  <div><h1>Lot {{ lot['lot_no'] }} <span class="badge">{{ lot['kind'] }}</span></h1>
+    <p>{{ lot['item_name'] }} · unit {{ unit }}{% if lot['supplier_name'] %} · supplier {{ lot['supplier_name'] }}{% endif %}</p></div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="/ask?q=history+of+lot+{{ lot['lot_no'] }}">Ask about this lot</a>
+    {% if can(user['role'], 'processing.create') and lot['kind'] == 'raw' %}<a class="btn btn-secondary" href="/processing/jobs/new?lot={{ lot['lot_no'] }}">New processing job</a>{% endif %}
+    {% if can(user['role'], 'dispatch.create') and lot['kind'] == 'finished' %}<a class="btn" href="/dispatch/new?lot={{ lot['lot_no'] }}">Dispatch this lot</a>{% endif %}
+  </div>
+</div>
+
+<div class="card"><h2>Current balances (lot and related lots)</h2>
+{% if t.balances %}
+<div class="table-wrap"><table><thead><tr><th>Lot</th><th>Location</th><th class="num">On hand</th><th class="num">Reserved</th><th class="num">Available</th></tr></thead><tbody>
+{% for b in t.balances %}<tr><td><a href="/fabrics/lots/{{ b.lot_no }}">{{ b.lot_no }}</a></td><td>{{ b.name }}</td><td class="num">{{ b.on_hand|qty }}</td><td class="num">{{ b.reserved|qty }}</td><td class="num">{{ b.available|qty }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}{{ empty('No stock on hand', 'This lot and its related lots hold no stock in any location.') }}{% endif %}
+</div>
+
+<div class="card"><h2>Lifecycle summary ({{ unit }})</h2>
+<div class="grid cols-4">
+  {% for label, v in [('Received', s.received), ('Issued to processing', s.issued_to_processing), ('Accepted (finished)', s.accepted), ('Rejected', s.rejected), ('Wastage (measured)', s.wastage), ('Shrinkage (measured)', s.shrinkage), ('Dispatched', s.dispatched), ('Consumed by Multihead', s.multihead_consumed), ('Open unexplained variance', s.open_variance)] %}
+  <div><div class="muted small">{{ label }}</div><div class="left"><strong>{{ v|qty }}</strong></div></div>
+  {% endfor %}
+</div>
+<p class="small muted mt-1">Computed from ledger movements across this lot and its parent/child lots. Open variance stays in Processing until resolved; it is not written off.</p>
+</div>
+
+{% if t.family|length > 1 %}
+<div class="card"><h2>Related lots</h2>
+<div class="table-wrap"><table><thead><tr><th>Lot</th><th>Kind</th><th>Parent</th></tr></thead><tbody>
+{% for l in t.family %}<tr><td><a href="/fabrics/lots/{{ l['lot_no'] }}">{{ l['lot_no'] }}</a></td><td>{{ l['kind'] }}</td>
+  <td>{% for p in t.family if p['id'] == l['parent_lot_id'] %}<a href="/fabrics/lots/{{ p['lot_no'] }}">{{ p['lot_no'] }}</a>{% else %}—{% endfor %}</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endif %}
+
+<div class="card"><h2>Processing results</h2>
+{% if t.results %}
+<div class="table-wrap"><table><thead><tr><th>Result</th><th>Job / issue</th><th class="num">Issued</th><th class="num">Accepted</th><th class="num">Rejected</th><th class="num">Wastage</th><th class="num">Shrinkage</th><th class="num">Remaining</th><th class="num">Variance</th><th>Status</th></tr></thead><tbody>
+{% for r in t.results %}<tr><td><a href="/processing/jobs/{{ r['job_id'] }}">{{ r['result_no'] }}</a></td><td>{{ r['job_no'] }} / {{ r['issue_no'] }}</td>
+<td class="num">{{ r['issued_qty']|qty }}</td><td class="num">{{ r['accepted']|qty }}</td><td class="num">{{ r['rejected']|qty }}</td><td class="num">{{ r['wastage']|qty }}</td><td class="num">{{ r['shrinkage']|qty }}</td><td class="num">{{ r['remaining']|qty }}</td><td class="num">{{ r['variance']|qty }}</td><td>{{ badge(r['reconciliation_status']) }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}{{ empty('No processing result posted yet') }}{% endif %}
+</div>
+
+{% if t.receipts or t.dispatches %}
+<div class="card"><h2>Documents</h2>
+<div class="table-wrap"><table><thead><tr><th>Document</th><th>Counterparty</th><th>Status</th><th>Gate / vehicle</th></tr></thead><tbody>
+{% for r in t.receipts %}<tr><td><a href="/fabrics/receipts/{{ r['id'] }}">{{ r['doc_no'] }}</a> <span class="muted small">goods receipt</span></td><td>{{ r['supplier_name'] }}</td><td>{{ badge(r['status']) }}</td><td>—</td></tr>{% endfor %}
+{% for d in t.dispatches %}<tr><td><a href="/dispatch/{{ d['id'] }}">{{ d['doc_no'] }}</a> <span class="muted small">dispatch</span></td><td>{{ d['customer_name'] }}</td><td>{{ badge(d['status']) }}</td>
+<td>{% if d['pass_no'] %}{{ d['pass_no'] }} · {{ d['vehicle_no'] }} · {{ badge(d['pass_status']) }}{% if d['exited_at'] %} <span class="muted small">exit {{ d['exited_at']|dt }}</span>{% endif %}{% else %}—{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endif %}
+
+{% if can(user['role'], 'ledger.view') %}
+<div class="card"><h2>Stock ledger timeline</h2>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Time</th><th>Movement</th><th>Lot</th><th>Location</th><th class="num">Qty</th><th>Document</th><th>By</th></tr></thead><tbody>
+{% for x in t.timeline %}<tr><td class="mono">{{ x['id'] }}</td><td class="small">{{ x['posted_at']|dt }}</td><td>{{ x['label'] }}{% if x['reverses_id'] %} <span class="badge err">reverses #{{ x['reverses_id'] }}</span>{% endif %}</td>
+<td><a href="/fabrics/lots/{{ x['lot_no'] }}">{{ x['lot_no'] }}</a></td><td>{{ x['loc_name'] }}</td><td class="num">{{ ('+' if x['qty'] > 0 else '') ~ (x['qty']|qty) }}</td>
+<td>{% if x['url'] %}<a href="{{ x['url'] }}">{{ x['doc_ref'] }}</a>{% else %}{{ x['doc_ref'] }}{% endif %}</td><td>{{ x['actor'] or '—' }}</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endif %}
+
+{% if can(user['role'], 'audit.view') %}
+<div class="card"><h2>Audit events for these records</h2>
+{% if t.audit %}<div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Record</th></tr></thead><tbody>
+{% for e in t.audit %}<tr><td class="small">{{ e['ts']|dt }}</td><td>{{ e['actor_name'] }}</td><td>{{ e['action'] }}</td><td class="mono">{{ e['entity_ref'] }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}{{ empty('No audit events') }}{% endif %}</div>
+{% endif %}
+{% endblock %}

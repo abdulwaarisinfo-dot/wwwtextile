@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Fabrics · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Fabrics</h1><p>Stock by lot and location, derived from the ledger. Reserved stock is held for approved dispatches.</p></div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="/fabrics/receipts">Goods receipts</a>
+    {% if can(user['role'], 'receipt.create') %}<a class="btn" href="/fabrics/receipts/new">New goods receipt</a>{% endif %}
+  </div>
+</div>
+<form class="filters" method="get" action="/fabrics">
+  <div class="field grow"><label for="q">Search lot or item</label><input id="q" type="search" name="q" value="{{ q }}"></div>
+  <div class="field"><label for="kind">Location type</label>
+    <select id="kind" name="kind"><option value="">All locations</option>
+      {% for v, t in [('raw_store','Raw Store'),('wip','Processing (WIP)'),('finished_store','Finished Store'),('reject_store','Reject Store')] %}<option value="{{ v }}" {{ 'selected' if kind == v }}>{{ t }}</option>{% endfor %}
+    </select></div>
+  <button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/fabrics">Clear filters</a>
+</form>
+{% if not rows %}
+  {{ empty('No stock matches', 'Post a goods receipt to bring stock in, or clear the filters.') }}
+{% else %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Lot</th><th>Item</th><th>Location</th><th class="num">On hand</th><th class="num">Reserved</th><th class="num">Available</th><th>Unit</th></tr></thead>
+  <tbody>
+  {% for r in rows %}<tr>
+    <td><a href="/fabrics/lots/{{ r.lot_no }}">{{ r.lot_no }}</a> {% if r.lot_kind == 'finished' %}<span class="badge">finished</span>{% endif %}</td>
+    <td>{{ r.item_name }}</td><td>{{ r.loc_name }}</td>
+    <td class="num">{{ r.on_hand|qty }}</td><td class="num">{{ r.reserved|qty }}</td><td class="num">{{ r.available|qty }}</td><td>{{ r.unit }}</td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+{% endif %}
+{% endblock %}

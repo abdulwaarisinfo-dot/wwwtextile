@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty, field %}
+{% block title %}Multihead · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Multihead</h1><p>Production orders with daily output logs and fabric consumption. The unit(s) and whether fabric consumption moves stock are <strong>administrator settings</strong>, not assumptions.</p></div>
+<div class="actions"><a class="btn btn-secondary" href="/reports/multihead-production">Report / export</a>{% if can(user['role'], 'mh.create') and units %}<a class="btn" href="/multihead/orders/new">New order</a>{% endif %}</div></div>
+{% if not units %}<div class="notice warn"><strong>No Multihead unit is configured.</strong> Orders cannot be created until an administrator sets “Multihead units” in <a href="/settings">Settings</a>. The unit is intentionally not assumed (BUSINESS_RULES.md).</div>{% endif %}
+<p class="small muted">Fabric consumption effect: <strong>{{ 'deducts stock (ledger row posted)' if effect == 'consume' else 'recorded only — no stock movement' }}</strong>. Units: {% for u, d in units.items() %}{{ u }}{{ ' (decimals)' if d == 3 }}{{ ', ' if not loop.last }}{% else %}none{% endfor %}.</p>
+<form class="filters" method="get" action="/multihead"><div class="field grow"><label for="q">Search order, title, operator</label><input id="q" type="search" name="q" value="{{ q }}"></div>
+<div class="field"><label for="status">Status</label><select id="status" name="status"><option value="">All</option>{% for v in ['open','completed','cancelled'] %}<option {{ 'selected' if status == v }}>{{ v }}</option>{% endfor %}</select></div><button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/multihead">Clear filters</a></form>
+{% if not rows %}{{ empty('No Multihead orders') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>Order</th><th>Title</th><th>Machine</th><th class="num">Planned</th><th class="num">Good</th><th class="num">Rejected</th><th>Progress</th><th>Due</th><th>Status</th></tr></thead><tbody>
+{% for o in rows %}<tr><td><a href="/multihead/orders/{{ o.id }}">{{ o.order_no }}</a></td><td>{{ o.title }}</td><td>{{ o.machine_code or '—' }}</td>
+<td class="num">{{ o.planned_qty|aqty(units.get(o.unit, 3)) if o.planned_qty else '—' }} {{ o.unit }}</td><td class="num">{{ o.good|aqty(units.get(o.unit, 3)) }}</td><td class="num">{{ o.rejected|aqty(units.get(o.unit, 3)) }}</td>
+<td>{{ (o.progress_pct ~ '%') if o.progress_pct is not none else '—' }}</td><td>{{ o.due_date or '—' }}{% if o.overdue %} <span class="badge warn">overdue</span>{% endif %}</td><td>{{ badge(o.status) }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if can(user['role'], 'mh.machines.manage') %}<div class="card mt-1"><h2>Machines</h2>
+<ul>{% for m in machines %}<li><span class="mono">{{ m.code }}</span> {{ m.name }} — {{ 'active' if m.active else 'inactive' }}
+<form class="inline" method="post" action="/multihead/machines/{{ m.id }}/active"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="active" value="{{ '0' if m.active else '1' }}"><button class="btn btn-secondary btn-sm" type="submit">{{ 'Deactivate' if m.active else 'Activate' }}</button></form></li>{% else %}<li class="muted">No machines yet.</li>{% endfor %}</ul>
+<form class="filters" method="post" action="/multihead/machines"><input type="hidden" name="csrf" value="{{ csrf }}"><div class="field"><label for="m-code">Code</label><input id="m-code" name="code" required></div><div class="field grow"><label for="m-name">Name</label><input id="m-name" name="name" required></div><button class="btn" type="submit">Add machine</button></form></div>{% endif %}
+{% endblock %}

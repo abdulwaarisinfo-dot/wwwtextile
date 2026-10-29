@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, select %}
+{% block title %}Master data · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Master data</h1><p>Suppliers, customers, job-work parties and fabric items. Items cannot change unit after creation; nothing here is deleted.</p></div></div>
+<div class="grid cols-2">
+<form class="card" method="post" action="/admin/parties"><h2>Add party</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ select('Type', 'kind', kinds.items()|list, pvalues, perrors) }}
+  {{ field('Name', 'name', pvalues, perrors, required=True) }}
+  <button class="btn" type="submit">Add party</button></form>
+<form class="card" method="post" action="/admin/items"><h2>Add fabric item</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ field('Code', 'code', ivalues, ierrors, required=True) }}{{ field('Name', 'name', ivalues, ierrors, required=True) }}
+  {{ field('Unit', 'unit', ivalues, ierrors, required=True, hint='For example m, yd, kg. Fixed once created; no unit conversion exists.') }}
+  <button class="btn" type="submit">Add item</button></form>
+</div>
+<div class="grid cols-2 mt-1">
+<div class="card"><h2>Parties ({{ parties|length }})</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>
+{% for p in parties %}<tr><td>{{ p.name }}</td><td>{{ kinds.get(p.kind, p.kind) }}</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><h2>Fabric items ({{ items|length }})</h2><div class="table-wrap"><table><thead><tr><th>Code</th><th>Name</th><th>Unit</th></tr></thead><tbody>
+{% for i in items %}<tr><td class="mono">{{ i.code }}</td><td>{{ i.name }}</td><td>{{ i.unit }}</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

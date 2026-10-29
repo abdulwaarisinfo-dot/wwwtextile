@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Lot Query · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Lot Query</h1><p>Evidence-backed questions about lots, processing and dispatch.</p></div></div>
+<div class="notice warn"><strong>This is not the AI Command Center.</strong> It is a deterministic, rule-based lookup over the same records the screens use. No language model is connected; it only understands the question patterns listed below and says so when it cannot answer. The LLM-based Command Center and voice assistant are planned (Pass 3 and 4).</div>
+<form class="filters" method="get" action="/ask">
+  <div class="field grow"><label for="q">Question</label><input id="q" type="search" name="q" value="{{ q }}" maxlength="300" placeholder="Where is lot DEMO-104-F1?" autofocus></div>
+  <button class="btn" type="submit">Ask</button><a class="btn btn-secondary" href="/ask">Clear</a>
+</form>
+{% if res %}
+<div class="card">
+  <h2>Answer</h2>
+  <p>{{ res.answer }}</p>
+  {% if res.clarification %}<p class="small muted">Refine the question with the exact lot number.</p>{% endif %}
+  {% if res.evidence %}
+  <h3 class="mb-1 mt-1">Evidence — records this answer is based on</h3>
+  <ul>{% for e in res.evidence %}<li>{% if e.url %}<a href="{{ e.url }}">{{ e.label }}</a>{% else %}{{ e.label }}{% endif %}{% if e.ref %} <span class="muted small">({{ e.ref }})</span>{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  <p class="small muted">Engine: {{ res.engine }}. Permissions of your role are applied.</p>
+</div>
+{% endif %}
+<div class="card flat"><h2>Questions it can answer</h2><ul>{% for s in supported %}<li>{{ s }}</li>{% endfor %}</ul></div>
+{% endblock %}

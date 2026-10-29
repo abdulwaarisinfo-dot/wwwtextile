@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}New accessory {{ type_label|lower }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>New accessory {{ type_label|lower }}</h1><p>Saved as a draft first. Stock changes only when it is posted.</p></div>
+<div class="actions">{% for k in ['receipt','issue','transfer'] %}<a class="btn btn-secondary btn-sm" href="/accessories/docs/new?type={{ k }}" {% if k == doc_type %}aria-current="page"{% endif %}>{{ k|capitalize }}</a>{% endfor %}</div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card" method="post" action="/accessories/docs"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="doc_type" value="{{ doc_type }}">
+<div class="form-grid">
+{% if doc_type == 'receipt' %}<div class="field {{ 'has-error' if errors.supplier_id }}"><label for="f-supplier_id">Supplier</label><select id="f-supplier_id" name="supplier_id"><option value="">Choose…</option>{% for s in suppliers %}<option value="{{ s.id }}" {{ 'selected' if values.get('supplier_id')|string == s.id|string }}>{{ s.name }}</option>{% endfor %}</select>{% if errors.supplier_id %}<div class="error">{{ errors.supplier_id }}</div>{% endif %}</div>
+{{ field('Supplier reference / challan', 'supplier_ref', values, errors) }}{% endif %}
+{% if doc_type != 'receipt' %}<div class="field {{ 'has-error' if errors.from_location_id }}"><label for="f-from">From location</label><select id="f-from" name="from_location_id"><option value="">Choose…</option>{% for l in locations %}<option value="{{ l.id }}" {{ 'selected' if values.get('from_location_id')|string == l.id|string }}>{{ l.name }}</option>{% endfor %}</select>{% if errors.from_location_id %}<div class="error">{{ errors.from_location_id }}</div>{% endif %}</div>{% endif %}
+{% if doc_type != 'issue' %}<div class="field {{ 'has-error' if errors.to_location_id }}"><label for="f-to">To location</label><select id="f-to" name="to_location_id"><option value="">Choose…</option>{% for l in locations %}<option value="{{ l.id }}" {{ 'selected' if values.get('to_location_id')|string == l.id|string }}>{{ l.name }}</option>{% endfor %}</select>{% if errors.to_location_id %}<div class="error">{{ errors.to_location_id }}</div>{% endif %}</div>{% endif %}
+{% if doc_type == 'issue' %}
+<div class="field {{ 'has-error' if errors.ref_type }}"><label for="f-ref_type">Consumed against</label><select id="f-ref_type" name="ref_type"><option value="">Choose…</option>{% for k, v in ref_types.items() %}<option value="{{ k }}" {{ 'selected' if values.get('ref_type') == k }}>{{ v }}</option>{% endfor %}</select>{% if errors.ref_type %}<div class="error">{{ errors.ref_type }}</div>{% endif %}</div>
+{{ field('Reference number', 'ref_no', values, errors, hint='A job number such as JOB-00001, an order number, or a department name.') }}{% endif %}
+</div>
+<h2 class="mt-1">Lines</h2>{% if errors.lines %}<div class="error">{{ errors.lines }}</div>{% endif %}
+<div class="table-wrap"><table><thead><tr><th>Item</th><th>Quantity</th></tr></thead><tbody>
+{% for it, q in lines %}{% set n = loop.index %}<tr><td><select name="item_{{ n }}" aria-label="Item for line {{ n }}"><option value="">—</option>{% for i in items %}<option value="{{ i.id }}" {{ 'selected' if it|string == i.id|string }}>{{ i.code }} · {{ i.name }} ({{ i.unit }})</option>{% endfor %}</select>
+{% if errors['line_' ~ n] %}<div class="error">{{ errors['line_' ~ n] }}</div>{% endif %}</td><td><input name="qty_{{ n }}" value="{{ q }}" inputmode="decimal" aria-label="Quantity for line {{ n }}"></td></tr>{% endfor %}</tbody></table></div>
+<div class="field mt-1"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes">{{ values.get('notes', '') or '' }}</textarea></div>
+<div class="actions"><button class="btn" type="submit">Save draft</button><a class="btn btn-secondary" href="/accessories/docs">Cancel</a></div></form>
+{% endblock %}

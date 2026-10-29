@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Search · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Search</h1><p>Across records your role is allowed to see.</p></div></div>
+<form class="filters" method="get" action="/search">
+  <div class="field grow"><label for="q">Query</label><input id="q" type="search" name="q" value="{{ q }}" minlength="2" autofocus></div>
+  <button class="btn" type="submit">Search</button>
+  <a class="btn btn-secondary" href="/search">Clear</a>
+</form>
+{% if not q %}{{ empty('Type at least 2 characters', 'Lot numbers, document numbers, vehicle numbers, drivers and customers are searched.') }}
+{% elif not results %}{{ empty('No matching records', 'Nothing you are permitted to view matches “' ~ q ~ '”.') }}
+{% else %}
+<div class="table-wrap"><table><thead><tr><th>Type</th><th>Record</th><th>Details</th></tr></thead><tbody>
+{% for r in results %}<tr><td>{{ r.type }}</td><td><a href="{{ r.url }}">{{ r.title }}</a></td><td class="muted">{{ r.meta }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, select, badge, post_button %}
+{% block title %}Users · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Users</h1><p>Create accounts, change roles, deactivate, reset passwords. Every change is audited and ends the user's sessions where relevant.</p></div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card w-md" method="post" action="/admin/users">
+  <h2>New user</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-grid">
+    {{ field('Username', 'username', values, errors, required=True, hint='3–32 chars: lower-case letters, digits . _ -') }}
+    {{ field('Display name', 'display_name', values, errors, required=True) }}
+    <div class="field {{ 'has-error' if errors.get('role') }}"><label for="f-role">Role</label><select id="f-role" name="role"><option value="">Choose…</option>{% for ro in roles %}<option value="{{ ro }}" {{ 'selected' if values.get('role') == ro }}>{{ role_labels.get(ro, ro) }}</option>{% endfor %}</select>{% if errors.get('role') %}<div class="error">{{ errors['role'] }}</div>{% endif %}</div>
+    {{ field('Temporary password', 'password', {}, errors, type='password', required=True, hint='At least ' ~ min_pw ~ ' characters. The user must change it at first sign-in.') }}
+  </div>
+  <button class="btn" type="submit">Create user</button>
+</form>
+<div class="table-wrap"><table>
+<thead><tr><th>User</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for r in rows %}<tr>
+  <td><strong>{{ r.username }}</strong><div class="small muted">{{ r.display_name }}</div></td>
+  <td><form class="inline" method="post" action="/admin/users/{{ r.id }}/role"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <select name="role" aria-label="Role of {{ r.username }}">{% for ro in roles %}<option value="{{ ro }}" {{ 'selected' if ro == r.role }}>{{ role_labels.get(ro, ro) }}</option>{% endfor %}</select>
+    <button class="btn btn-secondary btn-sm" type="submit">Change role</button></form></td>
+  <td>{{ badge('open' if r.active else 'void') }}{% if not r.active %} inactive{% endif %}
+    {% if r.locked_until %}<div class="small muted">locked until {{ r.locked_until|dt }}</div>{% endif %}
+    {% if r.must_change_password %}<div class="small muted">must change password</div>{% endif %}</td>
+  <td><div class="actions">
+    <form class="inline" method="post" action="/admin/users/{{ r.id }}/active" {% if r.active %}data-confirm="Deactivate {{ r.username }}? They are signed out immediately."{% endif %}>
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="active" value="{{ '0' if r.active else '1' }}">
+      <button class="btn btn-secondary btn-sm" type="submit">{{ 'Deactivate' if r.active else 'Activate' }}</button></form>
+    {{ post_button('/admin/users/' ~ r.id ~ '/unlock', csrf, 'Unlock') if r.failed_logins or r.locked_until }}
+    <form class="inline" method="post" action="/admin/users/{{ r.id }}/reset" data-confirm="Reset the password of {{ r.username }}?">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="password" name="password" placeholder="New temporary password" aria-label="New password for {{ r.username }}" autocomplete="new-password" required minlength="{{ min_pw }}">
+      <button class="btn btn-secondary btn-sm" type="submit">Reset password</button></form>
+  </div></td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

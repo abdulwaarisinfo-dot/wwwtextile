@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Dashboard · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Dashboard</h1><p>Operational position computed from posted records. Every figure links to the records behind it.</p></div>
+  <div class="actions">
+    {% if can(user['role'], 'receipt.create') %}<a class="btn" href="/fabrics/receipts/new">New goods receipt</a>{% endif %}
+    {% if can(user['role'], 'processing.create') %}<a class="btn btn-secondary" href="/processing/jobs/new">New processing job</a>{% endif %}
+    {% if can(user['role'], 'dispatch.create') %}<a class="btn btn-secondary" href="/dispatch/new">New dispatch</a>{% endif %}
+    {% if can(user['role'], 'ask.query') %}<a class="btn btn-secondary" href="/assistant">Ask {{ cfg.assistant_name }}</a>{% endif %}
+  </div>
+</div>
+
+<section class="card now" aria-labelledby="now-h">
+  <div class="now-head"><div><h2 id="now-h">{{ hello }}. {{ todo|length }} thing{{ '' if todo|length == 1 else 's' }} need{{ 's' if todo|length == 1 }} attention.</h2>{% if focus %}<p class="muted small">{{ focus }}</p>{% endif %}</div></div>
+  {% if flow %}<ol class="flow" aria-label="Business flow, with work waiting at each stage">
+    {% for f in flow %}<li><a href="{{ f.url }}" class="{{ 'has' if f.n }}"><span class="n">{{ f.n }}</span><span class="l">{{ f.label }}</span><span class="h">{{ f.hint }}</span></a></li>{% endfor %}
+  </ol>{% endif %}
+  {% if todo %}<ul class="todo">
+    {% for a in todo[:6] %}<li class="sev-{{ a.sev }}"><div><strong>{{ a.title }}</strong><div class="small muted">{{ a.why }}{% if a.waiting_on %} · Acts on this: {{ a.waiting_on }}.{% endif %}</div></div>
+      <a class="btn {{ 'btn-secondary' if not a.mine }} btn-sm" href="{{ a.url }}">{{ a.cta }}</a></li>{% endfor %}
+  </ul>{% if todo|length > 6 %}<p class="small muted">+{{ todo|length - 6 }} more in the Guide panel (bottom right).</p>{% endif %}
+  {% else %}<p>Nothing is waiting for you. All items below are up to date.</p>{% endif %}
+  <p class="small muted">Built from live records by fixed rules, not by an AI model. Each line says why it is listed.</p>
+</section>
+
+{% if m.stock %}
+<h2 class="mb-2">Stock on hand by location</h2>
+{% if m.empty %}
+  {{ empty('No stock has been posted yet', 'Post a goods receipt and the position will appear here.') }}
+{% else %}
+<div class="grid cols-4 mb-3">
+  {% for s in m.stock %}
+  <a class="metric" href="{{ s.url }}" title="{{ s.definition }}">
+    <div class="label">{{ s.label }}</div><div class="value">{{ s.qty|qty }}</div><div class="def">on hand · units per item (metres in the demo)</div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
+{% if m.counts %}
+<h2 class="mb-2">Work in progress and exceptions</h2>
+<div class="grid cols-3 mb-3">
+  {% for c in m.counts %}
+  <a class="metric {{ 'warn' if c.warn }}" href="{{ c.url }}"><div class="label">{{ c.label }}</div><div class="value">{{ c.value }}</div><div class="def">{{ c.definition }}</div></a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if m.finance is defined %}
+<h2 class="mb-2">Finance</h2>
+<div class="grid cols-3 mb-3">
+  <a class="metric" href="/finance"><div class="label">Payables outstanding</div><div class="value">{{ m.finance.payables|money(cfg.currency) }}</div><div class="def">Posted bills minus payments, per party.</div></a>
+  <a class="metric" href="/finance"><div class="label">Receivables outstanding</div><div class="value">{{ m.finance.receivables|money(cfg.currency) }}</div><div class="def">Posted invoices minus receipts.</div></a>
+  <a class="metric {{ 'warn' if m.finance.drafts }}" href="/finance/entries?status=draft"><div class="label">Finance drafts</div><div class="value">{{ m.finance.drafts }}</div><div class="def">Not counted until posted.</div></a>
+</div>
+{% endif %}
+
+{% if charts %}
+<h2 class="mb-2">Trends</h2>
+<div class="charts">
+{% for c in charts %}<div class="card"><h3>{{ c.title }}</h3><p class="muted small">{{ c.sub }}</p>{{ c.html }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="notice small"><strong>Stock-deduction policy in force:</strong> dispatched stock leaves the ledger at <span class="mono">{{ m.deduction_event }}</span>. This is a configurable placeholder until the business confirms the real rule.</div>
+
+{% if m.recent is defined %}
+<div class="card"><h2>Recent activity</h2>
+{% if m.recent %}
+<div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Record</th><th>Outcome</th></tr></thead><tbody>
+{% for e in m.recent %}<tr><td class="small">{{ e['ts']|dt }}</td><td>{{ e['actor_name'] }}</td><td>{{ e['action'] }}</td><td class="mono">{{ e['entity_ref'] or '' }}</td><td>{{ badge(e['outcome']) }}</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="small mt-1"><a href="/audit">Open full audit trail</a></p>
+{% else %}{{ empty('No activity yet') }}{% endif %}
+</div>
+{% endif %}
+{% endblock %}

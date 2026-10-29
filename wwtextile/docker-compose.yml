@@ -1,0 +1,17 @@
+# NOT TESTED (no Docker in the development environment). Put a TLS-terminating proxy in front (see deploy/nginx.conf).
+services:
+  app:
+    build: .
+    env_file: .env          # copy .env.example to .env and fill WW_SECRET_KEY
+    environment:
+      WW_FORWARDED_ALLOW_IPS: "*"   # only safe because port 8000 is not published; the proxy shares the compose network
+    volumes: ["wwdata:/data"]
+    restart: unless-stopped
+  proxy:
+    image: nginx:stable
+    volumes: ["./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro", "./deploy/certs:/etc/nginx/certs:ro"]
+    ports: ["443:443"]
+    depends_on: [app]
+    restart: unless-stopped
+volumes:
+  wwdata:

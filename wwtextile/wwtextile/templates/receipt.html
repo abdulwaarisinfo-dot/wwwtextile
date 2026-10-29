@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, post_button %}
+{% block title %}{{ r['doc_no'] }} · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ r['doc_no'] }} {{ badge(r['status']) }}</h1><p>Goods receipt · created {{ r['created_at']|dt }} by {{ r['created_by_name'] }}</p></div>
+  <div class="actions">
+    {% if r['status'] == 'draft' %}
+      {% if can(user['role'], 'receipt.post') %}{{ post_button('/fabrics/receipts/%d/post' % r['id'], csrf, 'Post receipt', 'btn', 'Post this receipt? Stock will increase by ' ~ (r['qty']|qty) ~ ' ' ~ r['unit'] ~ ' in lot ' ~ r['lot_no'] ~ '.') }}{% endif %}
+      {% if can(user['role'], 'receipt.create') %}{{ post_button('/fabrics/receipts/%d/discard' % r['id'], csrf, 'Discard draft', 'btn btn-danger', 'Discard this draft?') }}{% endif %}
+    {% endif %}
+    {% if r['lot_id'] %}<a class="btn btn-secondary" href="/fabrics/lots/{{ r['lot_no'] }}">Open lot</a>{% endif %}
+  </div>
+</div>
+<div class="card w-md"><dl class="kv">
+  <dt>Supplier</dt><dd>{{ r['supplier_name'] }}</dd><dt>Item</dt><dd>{{ r['item_name'] }} ({{ r['item_code'] }})</dd>
+  <dt>Lot</dt><dd>{{ r['lot_no'] }}</dd><dt>Location</dt><dd>{{ r['location_name'] }}</dd>
+  <dt>Quantity</dt><dd><strong>{{ r['qty']|qty }}</strong> {{ r['unit'] }}</dd>
+  <dt>Supplier reference</dt><dd>{{ r['supplier_ref'] or '—' }}</dd><dt>Vehicle</dt><dd>{{ r['vehicle_no'] or '—' }}</dd><dt>Notes</dt><dd>{{ r['notes'] or '—' }}</dd>
+  {% if r['posted_at'] %}<dt>Posted</dt><dd>{{ r['posted_at']|dt }} by {{ r['posted_by_name'] }}</dd>{% endif %}
+  {% if r['status'] == 'reversed' %}<dt>Reversed</dt><dd>{{ r['reversed_at']|dt }} — {{ r['reversal_reason'] }}</dd>{% endif %}
+</dl></div>
+{% if ledger %}<div class="card"><h2>Ledger entries</h2><div class="table-wrap"><table><thead><tr><th>#</th><th>Movement</th><th class="num">Qty</th><th>Reverses</th></tr></thead><tbody>
+{% for x in ledger %}<tr><td class="mono">{{ x['id'] }}</td><td>{{ x['movement']|pretty }}</td><td class="num">{{ x['qty']|qty }}</td><td>{{ x['reverses_id'] or '—' }}</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+{% if r['status'] == 'posted' and can(user['role'], 'receipt.reverse') %}
+<form class="card w-sm" method="post" action="/fabrics/receipts/{{ r['id'] }}/reverse" data-confirm="Reverse this posted receipt? A linked reversing ledger entry will be posted.">
+  <h2>Reverse this receipt</h2><p class="muted small">Only possible while the whole quantity is untouched. History is kept: a linked reversal entry is added, nothing is deleted.</p>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="field"><label for="reason">Reason</label><input id="reason" type="text" name="reason" required minlength="5"></div>
+  <button class="btn btn-danger" type="submit">Reverse receipt</button>
+</form>{% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}New Multihead order · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>New Multihead order</h1><p>The unit is fixed once the order is created.</p></div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card w-md" method="post" action="/multihead/orders"><input type="hidden" name="csrf" value="{{ csrf }}"><div class="form-grid">
+{{ field('Title', 'title', values, errors, required=True, full=True) }}
+<div class="field {{ 'has-error' if errors.unit }}"><label for="f-unit">Unit</label><select id="f-unit" name="unit"><option value="">Choose…</option>{% for u, d in units.items() %}<option value="{{ u }}" {{ 'selected' if values.get('unit') == u }}>{{ u }}{{ ' (decimals allowed)' if d == 3 }}</option>{% endfor %}</select>{% if errors.unit %}<div class="error">{{ errors.unit }}</div>{% endif %}</div>
+{{ field('Planned quantity', 'planned_qty', values, errors, inputmode='decimal', hint='Optional; enables progress %.') }}
+<div class="field"><label for="f-machine_id">Machine</label><select id="f-machine_id" name="machine_id"><option value="">Not assigned</option>{% for m in machines %}<option value="{{ m.id }}" {{ 'selected' if values.get('machine_id')|string == m.id|string }}>{{ m.code }} · {{ m.name }}</option>{% endfor %}</select></div>
+{{ field('Operator', 'operator', values, errors) }}{{ field('Due date', 'due_date', values, errors, type='date') }}
+<div class="field full"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes">{{ values.get('notes', '') or '' }}</textarea></div></div>
+<div class="actions"><button class="btn" type="submit">Create order</button><a class="btn btn-secondary" href="/multihead">Cancel</a></div></form>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, post_button, field, select, empty %}
+{% block title %}{{ job['job_no'] }} · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ job['job_no'] }} {{ badge(job['status']) }}</h1>
+    <p>{{ job['process_type']|capitalize }} · lot <a href="/fabrics/lots/{{ job['lot_no'] }}">{{ job['lot_no'] }}</a> · {{ job['item_name'] }}</p></div>
+  <div class="actions">
+    {% if job['status'] == 'open' and not issues and can(user['role'], 'processing.create') %}{{ post_button('/processing/jobs/%d/cancel' % job['id'], csrf, 'Cancel job', 'btn btn-danger', 'Cancel this job?') }}{% endif %}
+    <a class="btn btn-secondary" href="/processing">Back to jobs</a>
+  </div>
+</div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+
+<div class="card w-md"><dl class="kv">
+  <dt>Party</dt><dd>{{ job['party_name'] or 'In-house / not specified' }}</dd>
+  <dt>Expected completion</dt><dd>{{ job['expected_date'] or '—' }}</dd>
+  <dt>Created</dt><dd>{{ job['created_at']|dt }} by {{ job['created_by_name'] }}</dd>
+  <dt>Notes</dt><dd>{{ job['notes'] or '—' }}</dd>
+  <dt>Raw store availability</dt><dd>{% for l in locations %}{{ l['name'] }}: <strong>{{ avail[l['id']]|qty }}</strong> {{ job['unit'] }}{% if not loop.last %} · {% endif %}{% endfor %}</dd>
+</dl></div>
+
+<div class="card"><h2>Issues (stock sent into processing)</h2>
+{% if issues %}<div class="table-wrap"><table><thead><tr><th>Issue</th><th>From</th><th class="num">Quantity</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for i in issues %}<tr><td>{{ i['issue_no'] }}</td><td>{{ i['from_location_name'] }}</td><td class="num">{{ i['qty']|qty }} {{ job['unit'] }}</td><td>{{ badge(i['status']) }}</td>
+<td><div class="actions">
+{% if i['status'] == 'draft' and can(user['role'], 'processing.issue') %}
+  {{ post_button('/processing/issues/%d/post' % i['id'], csrf, 'Post issue', 'btn btn-sm', 'Post issue ' ~ i['issue_no'] ~ '? ' ~ (i['qty']|qty) ~ ' ' ~ job['unit'] ~ ' of lot ' ~ job['lot_no'] ~ ' will move from ' ~ i['from_location_name'] ~ ' into processing.') }}
+  {{ post_button('/processing/issues/%d/discard' % i['id'], csrf, 'Discard', 'btn btn-danger btn-sm', 'Discard this draft issue?') }}
+{% endif %}</div></td></tr>{% endfor %}
+</tbody></table></div>{% else %}{{ empty('No issue yet', 'Prepare an issue below to send stock into processing.') }}{% endif %}
+</div>
+
+{% if job['status'] == 'open' and can(user['role'], 'processing.issue') %}
+<form class="card w-md" method="post" action="/processing/jobs/{{ job['id'] }}/issues">
+  <h2>Prepare an issue</h2><p class="muted small">Validated against what is available now (on hand minus reservations). Posting re-checks inside the transaction.</p>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="inline-fields">
+    {{ field('Quantity', 'qty', values if open_form == 'issue' else {}, errors if open_form == 'issue' else {}, required=True, inputmode='decimal') }}
+    {{ field('Unit', 'unit', {'unit': (values.get('unit') if open_form == 'issue' else None) or job['unit']}, errors if open_form == 'issue' else {}) }}
+    {{ select('From', 'from_location_id', loc_opts, values if open_form == 'issue' else {}, {}, blank='Best available') }}
+  </div>
+  <div class="actions mt-1"><button class="btn" type="submit">Save issue draft</button></div>
+</form>
+{% endif %}
+
+{% for i in awaiting %}
+{% if can(user['role'], 'processing.result') %}
+<form class="card w-md" method="post" action="/processing/issues/{{ i['id'] }}/result" data-variance-form data-issued="{{ i['qty'] }}">
+  <h2>Record result for {{ i['issue_no'] }} <span class="muted small">(issued {{ i['qty']|qty }} {{ job['unit'] }})</span></h2>
+  <p class="muted small">Enter measured quantities. Unexplained variance is calculated for you and is never forced to zero.</p>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% set v = values if (open_form == 'result' and values.get('issue_id')|string == i['id']|string) else {} %}
+  {% set er = errors if v else {} %}
+  <div class="form-grid">
+    {{ field('Accepted output', 'accepted', v, er, inputmode='decimal', hint='Becomes a new finished lot.') }}
+    {{ field('Rejected', 'rejected', v, er, inputmode='decimal', hint='Held in the Reject Store.') }}
+    {{ field('Wastage (measured)', 'wastage', v, er, inputmode='decimal') }}
+    {{ field('Shrinkage (measured)', 'shrinkage', v, er, inputmode='decimal') }}
+    {{ field('Remaining in process', 'remaining', v, er, inputmode='decimal', hint='Still being worked on.') }}
+    <div class="field"><label for="f-notes-{{ i['id'] }}">Notes</label><input id="f-notes-{{ i['id'] }}" type="text" name="notes" value="{{ v.get('notes', '') or '' }}"></div>
+  </div>
+  <div class="preview mb-2" data-variance-out aria-live="polite">Enter quantities to see the reconciliation preview.</div>
+  <div class="actions"><button class="btn" type="submit">Save result draft</button></div>
+</form>
+{% endif %}
+{% endfor %}
+
+<div class="card"><h2>Results and reconciliation</h2>
+{% if results %}<div class="table-wrap"><table><thead><tr><th>Result</th><th>Issue</th><th class="num">Accepted</th><th class="num">Rejected</th><th class="num">Wastage</th><th class="num">Shrinkage</th><th class="num">Remaining</th><th class="num">Variance</th><th>Reconciliation</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for r in results if r['status'] != 'discarded' %}<tr><td>{{ r['result_no'] }}{% if r['finished_lot_no'] %}<div class="small"><a href="/fabrics/lots/{{ r['finished_lot_no'] }}">→ {{ r['finished_lot_no'] }}</a></div>{% endif %}</td><td>{{ r['issue_no'] }}</td>
+<td class="num">{{ r['accepted']|qty }}</td><td class="num">{{ r['rejected']|qty }}</td><td class="num">{{ r['wastage']|qty }}</td><td class="num">{{ r['shrinkage']|qty }}</td><td class="num">{{ r['remaining']|qty }}</td><td class="num">{{ r['variance']|qty }}</td>
+<td>{{ badge(r['reconciliation_status']) }}</td><td>{{ badge(r['status']) }}</td>
+<td><div class="actions">{% if r['status'] == 'draft' and can(user['role'], 'processing.result') %}
+ {{ post_button('/processing/results/%d/post' % r['id'], csrf, 'Post result', 'btn btn-sm', 'Post result ' ~ r['result_no'] ~ '? Accepted ' ~ (r['accepted']|qty) ~ ' moves to Finished Store' ~ (', unexplained variance ' ~ (r['variance']|qty) ~ ' will remain open in processing' if r['variance'] else '') ~ '.') }}
+ {{ post_button('/processing/results/%d/discard' % r['id'], csrf, 'Discard', 'btn btn-danger btn-sm', 'Discard this draft result?') }}{% endif %}</div></td></tr>{% endfor %}
+</tbody></table></div>
+<p class="small muted mt-1">input = accepted + rejected + wastage + shrinkage + remaining + unexplained variance. No loss tolerance is applied (open business question).</p>
+{% else %}{{ empty('No result recorded yet') }}{% endif %}
+</div>
+{% endblock %}

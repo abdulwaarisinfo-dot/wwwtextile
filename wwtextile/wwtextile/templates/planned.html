@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ title }}</h1><p><span class="badge warn">{{ status }}</span></p></div></div>
+<div class="notice warn"><strong>This module is not implemented.</strong> {{ body }}</div>
+<p class="muted">Nothing on this page performs any action. See <span class="mono">IMPLEMENTATION_PLAN.md</span> and <span class="mono">BUSINESS_RULES.md</span> in the project for status and open decisions.</p>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Finance entries · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Finance entries</h1><p>Drafts, posted and voided entries.</p></div><div class="actions"><a class="btn btn-secondary" href="/finance">Summary</a>{% if can(user['role'], 'fin.create') %}<a class="btn" href="/finance/entries/new">New entry</a>{% endif %}</div></div>
+<form class="filters" method="get" action="/finance/entries">
+<div class="field grow"><label for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}"></div>
+<div class="field"><label for="kind">Type</label><select id="kind" name="kind"><option value="">All</option>{% for k, v in kinds.items() %}<option value="{{ k }}" {{ 'selected' if kind == k }}>{{ v }}</option>{% endfor %}</select></div>
+<div class="field"><label for="status">Status</label><select id="status" name="status"><option value="">All</option>{% for v in ['draft','posted','voided','discarded'] %}<option {{ 'selected' if status == v }}>{{ v }}</option>{% endfor %}</select></div>
+<div class="field"><label for="party">Party</label><select id="party" name="party"><option value="">All</option>{% for p in parties %}<option value="{{ p.id }}" {{ 'selected' if party == p.id }}>{{ p.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="date_from">From</label><input id="date_from" type="date" name="date_from" value="{{ d1 }}"></div><div class="field"><label for="date_to">To</label><input id="date_to" type="date" name="date_to" value="{{ d2 }}"></div>
+<button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/finance/entries">Clear filters</a></form>
+{% if not rows %}{{ empty('No entries match') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>Entry</th><th>Type</th><th>Date</th><th>Party / category</th><th>Reference</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>
+{% for e in rows %}<tr><td><a href="/finance/entries/{{ e.id }}">{{ e.entry_no }}</a></td><td>{{ kinds.get(e.kind) }}</td><td>{{ e.entry_date }}</td><td>{{ e.party_name or e.category or '—' }}</td><td class="small">{{ e.reference or e.doc_ref_no or '—' }}</td><td class="num">{{ e.amount_paise|money(e.currency) }}</td><td>{{ badge(e.status) }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% endblock %}

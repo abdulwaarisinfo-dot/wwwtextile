@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, select %}
+{% block title %}New processing job · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>New processing job</h1><p>A job describes the work. Stock moves only when an issue is posted.</p></div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card w-md" method="post" action="/processing/jobs">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-grid">
+    {{ select('Source lot (raw)', 'lot_no', lot_opts, values, errors) }}
+    {{ select('Process type', 'process_type', type_opts, values, errors) }}
+    {{ select('Job-work party (optional)', 'party_id', party_opts, values, errors, blank='None / in-house') }}
+    {{ field('Expected completion date', 'expected_date', values, errors, type='date', hint='Used to flag overdue jobs.') }}
+    <div class="field full"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes">{{ values.get('notes', '') or '' }}</textarea></div>
+  </div>
+  <div class="actions"><button class="btn" type="submit">Create job</button><a class="btn btn-secondary" href="/processing">Cancel</a></div>
+</form>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, field %}
+{% block title %}{{ d.original_name }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ d.original_name }} {{ badge(d.status) }}</h1><p>Read by {{ d.ocr_method|pretty }} · uploaded {{ d.uploaded_at|dt }} by {{ d.uploader }}</p></div><div class="actions"><a class="btn btn-secondary" href="/documents/{{ d.id }}/file" target="_blank" rel="noopener">View original</a><a class="btn btn-secondary" href="/documents">All documents</a></div></div>
+{% for w in ex.warnings %}<div class="notice warn small">{{ w }}</div>{% endfor %}
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<div class="grid cols-2">
+<div class="card"><h2>Review and create receipt draft</h2>
+{% if d.status == 'draft_created' %}<p>A draft was already created: <a href="/fabrics/receipts/{{ d.receipt_id }}">open the receipt</a>.</p>
+{% elif d.status == 'rejected' %}<p class="muted">This document was rejected.</p>
+{% elif can(user['role'], 'receipt.create') %}
+<p class="small muted">Suggested values are pre-filled. <strong>Confidence:</strong> {% for k, v in ex.fields.items() %}{% if v.confidence and k in ['supplier_id','item_id','lot_no','qty','supplier_ref','vehicle_no'] %}{{ k }}: {{ v.confidence }}{{ '; ' if not loop.last }}{% endif %}{% endfor %}</p>
+<form method="post" action="/documents/{{ d.id }}/receipt-draft"><input type="hidden" name="csrf" value="{{ csrf }}"><div class="form-grid">
+{% set sup_opts = supplier_opts %}
+<div class="field {{ 'has-error' if errors.supplier_id }}"><label for="f-supplier_id">Supplier</label><select id="f-supplier_id" name="supplier_id"><option value="">Choose…</option>{% for v, t in supplier_opts %}<option value="{{ v }}" {{ 'selected' if values.get('supplier_id')|string == v|string }}>{{ t }}</option>{% endfor %}</select>{% if errors.supplier_id %}<div class="error">{{ errors.supplier_id }}</div>{% endif %}</div>
+<div class="field {{ 'has-error' if errors.item_id }}"><label for="f-item_id">Item</label><select id="f-item_id" name="item_id"><option value="">Choose…</option>{% for v, t in item_opts %}<option value="{{ v }}" {{ 'selected' if values.get('item_id')|string == v|string }}>{{ t }}</option>{% endfor %}</select>{% if errors.item_id %}<div class="error">{{ errors.item_id }}</div>{% endif %}</div>
+{{ field('Lot number', 'lot_no', values, errors, required=True) }}{{ field('Quantity', 'qty', values, errors, required=True, inputmode='decimal', hint='The unit is taken from the item.') }}
+{{ field('Supplier reference / challan', 'supplier_ref', values, errors) }}{{ field('Vehicle number', 'vehicle_no', values, errors) }}</div>
+<div class="actions"><button class="btn" type="submit">Create receipt draft</button></div></form>
+<form class="inline mt-1" method="post" action="/documents/{{ d.id }}/reject" data-confirm="Reject this document?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-secondary btn-sm" type="submit">Reject document</button></form>
+{% else %}<p class="muted">Your role cannot create receipts.</p>{% endif %}</div>
+<div class="card"><h2>Text that was read</h2>{% if d.ocr_text %}<pre class="small pre-scroll">{{ d.ocr_text }}</pre>{% else %}<p class="muted">No text could be read. Enter the values by hand from the original.</p>{% endif %}</div></div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Document reader · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Document reader</h1><p>Upload a supplier challan or invoice (PDF, PNG, JPEG). The text is read, candidate fields are suggested, and <strong>you review and correct every value</strong> before a goods-receipt <em>draft</em> is created. Nothing is posted automatically.</p></div></div>
+<div class="notice small">Reading: {{ 'PDF text layer' if tools.pdftotext else 'no pdftotext' }}; OCR {{ 'available (tesseract)' if tools.tesseract else 'NOT installed — scanned files cannot be read' }}. AI field extraction: {{ 'on (' ~ llm.provider ~ ')' if llm.configured else 'off — pattern matching only' }}. OCR can misread digits; always compare with the original.</div>
+{% if can(user['role'], 'doc.upload') %}<form class="card w-md mt-1" method="post" action="/documents/upload" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="field"><label for="file">File (max {{ max_mb }} MB)</label><input id="file" type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required></div><button class="btn" type="submit">Upload and read</button></form>{% endif %}
+{% if not rows %}{{ empty('No documents yet') }}{% else %}
+<div class="table-wrap mt-1"><table><thead><tr><th>Document</th><th>Read by</th><th>Status</th><th>Uploaded</th></tr></thead><tbody>
+{% for d in rows %}<tr><td><a href="/documents/{{ d.id }}">{{ d.original_name }}</a><div class="small muted">{{ (d.size / 1024)|round(1) }} KB · {{ d.mime }}</div></td><td>{{ d.ocr_method|pretty }}</td><td>{{ badge(d.status) }}</td><td class="small">{{ d.uploaded_at|dt }} by {{ d.uploader }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% endblock %}

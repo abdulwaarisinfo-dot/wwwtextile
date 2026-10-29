@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}New {{ label|lower }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>New {{ label|lower }}</h1><p>Saved as a draft; it counts only after it is posted{% if kind != 'expense' %} (by a different person if the separate-poster setting is on){% endif %}.</p></div>
+<div class="actions">{% for k, v in kinds.items() %}<a class="btn btn-secondary btn-sm" href="/finance/entries/new?kind={{ k }}" {% if k == kind %}aria-current="page"{% endif %}>{{ v.split(' (')[0] }}</a>{% endfor %}</div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card w-md" method="post" action="/finance/entries"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="kind" value="{{ kind }}">
+<div class="form-grid">
+{% if kind != 'expense' %}<div class="field {{ 'has-error' if errors.party_id }}"><label for="f-party_id">{{ 'Customer' if kind in ('invoice','payment_in') else 'Supplier / job-work party' }}</label><select id="f-party_id" name="party_id"><option value="">Choose…</option>
+{% for p in parties %}{% if (kind in ('invoice','payment_in') and p.kind == 'customer') or (kind in ('bill','payment_out') and p.kind != 'customer') %}<option value="{{ p.id }}" {{ 'selected' if values.get('party_id')|string == p.id|string }}>{{ p.name }}</option>{% endif %}{% endfor %}</select>{% if errors.party_id %}<div class="error">{{ errors.party_id }}</div>{% endif %}</div>{% endif %}
+{{ field('Date', 'entry_date', values, errors, type='date', required=True) }}
+{{ field('Amount (' ~ currency ~ ')', 'amount', values, errors, required=True, inputmode='decimal', hint='Up to 2 decimals. Must be greater than zero.') }}
+{% if kind == 'expense' %}{{ field('Category', 'category', values, errors, required=True, hint='Free text; ' ~ (categories|join(', ') if categories else 'no categories used yet') ~ '.') }}{% endif %}
+{% if kind in ('payment_out','payment_in') %}{{ field('Method', 'method', values, errors, hint='cash, bank transfer, cheque… (free text)') }}{% endif %}
+{{ field('External reference', 'reference', values, errors, hint='Supplier bill no., cheque no., transaction id.') }}
+{% if kind in ('bill','invoice') %}<div class="field"><label for="f-doc_ref_type">Linked document (optional)</label><select id="f-doc_ref_type" name="doc_ref_type"><option value="">None</option><option value="goods_receipt" {{ 'selected' if values.get('doc_ref_type') == 'goods_receipt' }}>Goods receipt</option><option value="dispatch" {{ 'selected' if values.get('doc_ref_type') == 'dispatch' }}>Dispatch</option></select></div>
+{{ field('Linked document number', 'doc_ref_no', values, errors, hint='Checked against existing records.') }}{% endif %}
+<div class="field full"><label for="f-description">Description</label><textarea id="f-description" name="description">{{ values.get('description', '') or '' }}</textarea></div></div>
+<div class="actions"><button class="btn" type="submit">Save draft</button><a class="btn btn-secondary" href="/finance">Cancel</a></div></form>
+{% endblock %}

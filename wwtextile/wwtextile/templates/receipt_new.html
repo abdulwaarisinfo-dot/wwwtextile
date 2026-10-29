@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, select %}
+{% block title %}New goods receipt · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>New goods receipt</h1><p>Saved as a draft first. Stock changes only when you post it.</p></div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card w-md" method="post" action="/fabrics/receipts">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-grid">
+    {{ select('Supplier', 'supplier_id', supplier_opts, values, errors) }}
+    {{ select('Item', 'item_id', item_opts, values, errors) }}
+    {{ field('Lot number', 'lot_no', values, errors, required=True, hint='Becomes the lot identifier. Must be unique.') }}
+    {{ select('Receive into', 'location_id', raw_loc_opts, values, errors, blank=None) }}
+    {{ field('Quantity', 'qty', values, errors, required=True, inputmode='decimal', hint='Up to 3 decimals.') }}
+    {{ field('Unit', 'unit', {'unit': values.get('unit') or 'm'}, errors, hint='Must match the item unit. No conversions are configured.') }}
+    {{ field('Supplier reference / challan', 'supplier_ref', values, errors) }}
+    {{ field('Vehicle number', 'vehicle_no', values, errors) }}
+    <div class="field full"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes">{{ values.get('notes', '') or '' }}</textarea></div>
+  </div>
+  <div class="actions"><button class="btn" type="submit">Save draft</button><a class="btn btn-secondary" href="/fabrics/receipts">Cancel</a></div>
+</form>
+{% endblock %}

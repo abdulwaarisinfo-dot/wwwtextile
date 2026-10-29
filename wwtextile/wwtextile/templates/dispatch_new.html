@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, select, empty %}
+{% block title %}New dispatch · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>New dispatch</h1><p>Finished lots only. A draft reserves nothing; approval reserves stock.</p></div></div>
+{% if errors %}<div class="toast error" role="alert">{% for k, m in errors.items() %}{{ m }}{% if not loop.last %} {% endif %}{% endfor %}</div>{% endif %}
+{% if not lots %}{{ empty('No finished stock is available', 'Post a processing result with accepted output first.') }}{% else %}
+<form class="card w-md" method="post" action="/dispatch">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ select('Customer', 'customer_id', customer_opts, values, errors) }}
+  <h3 class="mb-1">Lines</h3>
+  {% for i in [1, 2, 3] %}
+  <div class="inline-fields mb-1">
+    <div class="field"><label for="lot_{{ i }}">Lot {{ i }}{% if i == 1 %} <span class="muted small">(required)</span>{% endif %}</label>
+      <select id="lot_{{ i }}" name="lot_{{ i }}"><option value="">{{ 'Choose finished lot…' if i == 1 else 'None' }}</option>
+        {% for l in lots %}<option value="{{ l['lot_no'] }}" {{ 'selected' if values.get('lot_' ~ i) == l['lot_no'] }}>{{ l['lot_no'] }} — {{ l['available']|qty }} {{ l['unit'] }} available</option>{% endfor %}</select></div>
+    <div class="field"><label for="qty_{{ i }}">Quantity {{ i }}</label><input id="qty_{{ i }}" type="text" name="qty_{{ i }}" inputmode="decimal" value="{{ values.get('qty_' ~ i, '') or '' }}" autocomplete="off"></div>
+  </div>
+  {% endfor %}
+  <div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes">{{ values.get('notes', '') or '' }}</textarea></div>
+  <div class="actions"><button class="btn" type="submit">Save draft</button><a class="btn btn-secondary" href="/dispatch">Cancel</a></div>
+</form>{% endif %}
+{% endblock %}

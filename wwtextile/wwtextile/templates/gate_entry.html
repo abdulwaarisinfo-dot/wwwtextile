@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, post_button %}
+{% block title %}{{ g.entry_no }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ g.entry_no }} <span class="badge {{ 'solid' if g.status in ('inside','pending_exit') else '' }}">{{ g.status|pretty }}</span></h1><p>{{ g.direction|capitalize }} vehicle <span class="mono">{{ g.vehicle_no }}</span></p></div>
+<div class="actions"><a class="btn btn-secondary" href="/gate/entries/{{ g.id }}/print">Print</a><a class="btn btn-secondary" href="/gate/entries">All entries</a></div></div>
+<div class="card"><dl class="kv"><dt>Driver</dt><dd>{{ g.driver_name }}{% if g.driver_phone %} · {{ g.driver_phone }}{% endif %}</dd><dt>Party</dt><dd>{{ g.party_name or g.party_text or '—' }}</dd><dt>Material</dt><dd>{{ g.material }}</dd>
+{% if g.declared_qty %}<dt>Declared qty</dt><dd>{{ g.declared_qty|qty }} {{ g.declared_unit }} (as stated by the driver)</dd>{% endif %}
+{% if g.ref_no %}<dt>Related record</dt><dd>{{ ref_types.get(g.ref_type, g.ref_type) }}: {% if ref_link %}<a href="{{ ref_link }}">{{ g.ref_no }}</a>{% else %}{{ g.ref_no }}{% endif %}</dd>{% endif %}
+<dt>Entered</dt><dd>{{ g.entered_at|dt }} by {{ g.entered_by_name }}</dd>{% if g.approved_at %}<dt>Approved</dt><dd>{{ g.approved_at|dt }} by {{ g.approved_by_name }}</dd>{% endif %}
+{% if g.exited_at %}<dt>Exited</dt><dd>{{ g.exited_at|dt }} by {{ g.exited_by_name }}{% if g.exit_notes %} — {{ g.exit_notes }}{% endif %}</dd>{% endif %}
+{% if g.cancelled_at %}<dt>Cancelled</dt><dd>{{ g.cancelled_at|dt }} — {{ g.cancel_reason }}</dd>{% endif %}{% if g.notes %}<dt>Notes</dt><dd>{{ g.notes }}</dd>{% endif %}</dl></div>
+<div class="actions mt-1">
+{% if g.status == 'awaiting_approval' and can(user['role'], 'gate.entry.approve') %}{{ post_button('/gate/entries/' ~ g.id ~ '/approve', csrf, 'Approve for exit', 'btn', 'Approve ' ~ g.entry_no ~ ' for exit?') }}{% endif %}
+{% if (g.status == 'inside' or g.status == 'pending_exit') and can(user['role'], 'gate.entry.exit') %}<form class="inline" method="post" action="/gate/entries/{{ g.id }}/exit" data-confirm="Confirm that {{ g.vehicle_no }} has physically left?"><input type="hidden" name="csrf" value="{{ csrf }}"><input name="notes" placeholder="Exit notes (optional)" maxlength="300" aria-label="Exit notes"><button class="btn" type="submit">Confirm exit</button></form>{% endif %}
+{% if g.status not in ('exited','cancelled') and can(user['role'], 'gate.entry.cancel') %}<form class="inline" method="post" action="/gate/entries/{{ g.id }}/cancel" data-confirm="Cancel {{ g.entry_no }}?"><input type="hidden" name="csrf" value="{{ csrf }}"><input name="reason" placeholder="Reason (required)" required minlength="5" aria-label="Cancellation reason"><button class="btn btn-danger" type="submit">Cancel entry</button></form>{% endif %}</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Textile Processing · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Textile Processing</h1><p>Jobs, issues and results. Every result is reconciled; nothing is silently balanced.</p></div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="/processing?view=exceptions">Reconciliation exceptions</a>
+    {% if can(user['role'], 'processing.create') %}<a class="btn" href="/processing/jobs/new">New processing job</a>{% endif %}
+  </div>
+</div>
+
+{% if exceptions is not none %}
+<div class="card"><h2>Open reconciliation exceptions</h2>
+{% if exceptions %}<div class="table-wrap"><table><thead><tr><th>Result</th><th>Job</th><th>Lot</th><th class="num">Unexplained variance</th><th>Posted</th></tr></thead><tbody>
+{% for r in exceptions %}<tr><td><a href="/processing/jobs/{{ r['job_id'] }}">{{ r['result_no'] }}</a></td><td>{{ r['job_no'] }}</td><td><a href="/fabrics/lots/{{ r['lot_no'] }}">{{ r['lot_no'] }}</a></td><td class="num">{{ r['variance']|qty }}</td><td class="small">{{ r['posted_at']|dt }}</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="small muted mt-1">The variance stays in the Processing location. Resolving it needs an authorised adjustment, which is not implemented yet.</p>
+{% else %}{{ empty('No open exceptions', 'Every posted result balances exactly.') }}{% endif %}</div>
+{% endif %}
+
+<form class="filters" method="get" action="/processing">
+  <div class="field grow"><label for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Job or lot"></div>
+  <div class="field"><label for="status">Status</label><select id="status" name="status"><option value="">All</option>
+    {% for s in ['open','result_posted','cancelled'] %}<option value="{{ s }}" {{ 'selected' if status == s }}>{{ s|pretty|capitalize }}</option>{% endfor %}</select></div>
+  <div class="field checks"><label><input type="checkbox" name="overdue" value="1" {{ 'checked' if overdue }}> Overdue only</label></div>
+  <button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/processing">Clear filters</a>
+</form>
+{% if not jobs %}{{ empty('No jobs match', 'Create a job for a received raw lot to begin.') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>Job</th><th>Lot</th><th>Process</th><th>Party</th><th class="num">Issued</th><th>Expected</th><th>Status</th></tr></thead><tbody>
+{% for j in jobs %}<tr><td><a href="/processing/jobs/{{ j['id'] }}">{{ j['job_no'] }}</a></td><td><a href="/fabrics/lots/{{ j['lot_no'] }}">{{ j['lot_no'] }}</a></td><td>{{ j['process_type']|capitalize }}</td><td>{{ j['party_name'] or '—' }}</td>
+<td class="num">{{ j['issued_qty']|qty }} {{ j['unit'] }}</td><td>{{ j['expected_date'] or '—' }} {% if j['overdue'] %}<span class="badge err">overdue</span>{% endif %}</td><td>{{ badge(j['status']) }}</td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
+{% endblock %}

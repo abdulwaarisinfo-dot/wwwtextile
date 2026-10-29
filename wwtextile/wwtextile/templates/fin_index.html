@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Finance · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Finance</h1><p>Payables, receivables, payments and expenses in {{ currency }}. This is a simple bill/payment tracker — <strong>not</strong> a general ledger: no tax, no foreign currency, no chart of accounts, no bank reconciliation.</p></div>
+<div class="actions"><a class="btn btn-secondary" href="/finance/entries">All entries</a><a class="btn btn-secondary" href="/reports/financial-summary">Report / export</a>
+{% if can(user['role'], 'fin.create') %}<a class="btn" href="/finance/entries/new?kind=bill">New bill</a><a class="btn" href="/finance/entries/new?kind=invoice">New invoice</a><a class="btn btn-secondary" href="/finance/entries/new?kind=payment_out">Payment made</a><a class="btn btn-secondary" href="/finance/entries/new?kind=payment_in">Payment received</a><a class="btn btn-secondary" href="/finance/entries/new?kind=expense">Expense</a>{% endif %}</div></div>
+{% if err %}<div class="toast error" role="alert">{{ err }}</div>{% endif %}
+<form class="filters" method="get" action="/finance"><div class="field"><label for="date_from">From</label><input id="date_from" type="date" name="date_from" value="{{ d1 }}"></div><div class="field"><label for="date_to">To (balances as of)</label><input id="date_to" type="date" name="date_to" value="{{ d2 }}"></div><button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/finance">Clear filters</a></form>
+<div class="grid cols-4">
+<div class="metric"><span class="label">Payables outstanding</span><span class="value">{{ s.payables|money(currency) }}</span><span class="def">Posted bills minus payments made, per party.</span></div>
+<div class="metric"><span class="label">Receivables outstanding</span><span class="value">{{ s.receivables|money(currency) }}</span><span class="def">Posted invoices minus payments received.</span></div>
+<div class="metric"><span class="label">Expenses in period</span><span class="value">{{ s.expenses_total|money(currency) }}</span><span class="def">Posted expenses.</span></div>
+<a class="metric {{ 'warn' if s.drafts }}" href="/finance/entries?status=draft"><span class="label">Draft entries</span><span class="value">{{ s.drafts }}</span><span class="def">Not counted anywhere until posted.</span></a></div>
+<div class="grid cols-4 mt-1">
+<div class="metric"><span class="label">Billed</span><span class="value">{{ s.billed|money(currency) }}</span></div><div class="metric"><span class="label">Paid out</span><span class="value">{{ s.paid|money(currency) }}</span></div>
+<div class="metric"><span class="label">Invoiced</span><span class="value">{{ s.invoiced|money(currency) }}</span></div><div class="metric"><span class="label">Received</span><span class="value">{{ s.received|money(currency) }}</span></div></div>
+<div class="card mt-1"><h2>Balances by party</h2>{% if not s.per_party %}<p class="muted">No posted entries yet.</p>{% else %}<div class="table-wrap"><table><thead><tr><th>Party</th><th>Direction</th><th class="num">Charged</th><th class="num">Settled</th><th class="num">Balance</th></tr></thead><tbody>
+{% for b in s.per_party %}<tr><td><a href="/finance/parties/{{ b.party.id }}">{{ b.party.name }}</a></td><td>{{ b.direction }}</td><td class="num">{{ b.charged|money(currency) }}</td><td class="num">{{ b.settled|money(currency) }}</td><td class="num"><strong>{{ b.balance|money(currency) }}</strong></td></tr>{% endfor %}</tbody></table></div>{% endif %}</div>
+{% if s.expenses %}<div class="card mt-1"><h2>Expenses by category</h2><div class="table-wrap"><table><tbody>{% for x in s.expenses %}<tr><td>{{ x.category or 'Uncategorised' }}</td><td class="num">{{ x.s|money(currency) }}</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, post_button %}
+{% block title %}Notifications · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Notifications</h1><p>{{ unread }} unread. In-app only; no email or SMS is sent.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="/notifications{{ '' if only_unread else '?unread=1' }}">{{ 'Show all' if only_unread else 'Unread only' }}</a>
+  {{ post_button('/notifications/read-all', csrf, 'Mark all read') if unread }}</div></div>
+{% if not rows %}{{ empty('Nothing here', 'Notifications appear when work needs your attention.') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>When</th><th>Notification</th><th></th></tr></thead><tbody>
+{% for n in rows %}<tr><td class="small">{{ n.created_at|dt }}</td>
+<td>{% if not n.read_at %}<span class="badge solid">new</span> {% endif %}<strong>{{ n.title }}</strong>{% if n.body %}<div class="small muted">{{ n.body }}</div>{% endif %}{% if n.url %}<div><a href="{{ n.url }}">Open record</a></div>{% endif %}</td>
+<td>{{ post_button('/notifications/' ~ n.id ~ '/read', csrf, 'Mark read', back='/notifications') if not n.read_at }}</td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
+{% endblock %}

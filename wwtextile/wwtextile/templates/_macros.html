@@ -1,0 +1,48 @@
+{% macro badge(status) -%}
+{%- set cls = {'posted':'ok','balanced':'ok','exited':'ok','success':'ok','result_posted':'ok','consumed':'ok',
+   'exception':'warn','overdue':'warn','draft':'','approved':'solid','pass_issued':'solid','issued':'solid','open':'',
+   'cancelled':'err','void':'err','reversed':'err','discarded':'','failed':'err','denied':'err','released':''}.get(status, '') -%}
+<span class="badge {{ cls }}">{{ status|pretty }}</span>
+{%- endmacro %}
+
+{% macro field(label, name, values, errors, type='text', hint=None, required=False, placeholder='', inputmode=None, full=False) -%}
+<div class="field {{ 'has-error' if errors.get(name) }} {{ 'full' if full }}">
+  <label for="f-{{ name }}">{{ label }}{% if required %} <span class="muted small">(required)</span>{% endif %}</label>
+  <input id="f-{{ name }}" type="{{ type }}" name="{{ name }}" value="{{ values.get(name, '') or '' }}" placeholder="{{ placeholder }}"
+         {% if inputmode %}inputmode="{{ inputmode }}"{% endif %} autocomplete="off" {% if errors.get(name) %}aria-invalid="true" aria-describedby="e-{{ name }}"{% endif %}>
+  {% if hint %}<div class="hint">{{ hint }}</div>{% endif %}
+  {% if errors.get(name) %}<div class="error" id="e-{{ name }}">{{ errors[name] }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro select(label, name, options, values, errors, blank='Choose…', full=False) -%}
+{# options: list of (value, text) #}
+<div class="field {{ 'has-error' if errors.get(name) }} {{ 'full' if full }}">
+  <label for="f-{{ name }}">{{ label }}</label>
+  <select id="f-{{ name }}" name="{{ name }}" {% if errors.get(name) %}aria-invalid="true" aria-describedby="e-{{ name }}"{% endif %}>
+    {% if blank %}<option value="">{{ blank }}</option>{% endif %}
+    {% for v, t in options %}<option value="{{ v }}" {{ 'selected' if (values.get(name, '')|string) == (v|string) }}>{{ t }}</option>{% endfor %}
+  </select>
+  {% if errors.get(name) %}<div class="error" id="e-{{ name }}">{{ errors[name] }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro post_button(action, csrf, label, cls='btn btn-secondary btn-sm', confirm=None, back=None) -%}
+<form class="inline" method="post" action="{{ action }}" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>
+  <input type="hidden" name="csrf" value="{{ csrf }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
+  <button type="submit" class="{{ cls }}">{{ label }}</button>
+</form>
+{%- endmacro %}
+
+{% macro empty(title, text='') -%}
+<div class="empty"><strong>{{ title }}</strong>{{ text }}</div>
+{%- endmacro %}
+
+{% macro pager(page, size, count, base, qs) -%}
+{% set pages = ((count + size - 1) // size) or 1 %}
+<div class="pager small muted">
+  <span>{{ count }} row{{ '' if count == 1 else 's' }} · page {{ page }} of {{ pages }}</span>
+  {% if page > 1 %}<a class="btn btn-secondary btn-sm" href="{{ base }}?{{ qs ~ '&' if qs }}page={{ page - 1 }}">Previous</a>{% endif %}
+  {% if page < pages %}<a class="btn btn-secondary btn-sm" href="{{ base }}?{{ qs ~ '&' if qs }}page={{ page + 1 }}">Next</a>{% endif %}
+</div>
+{%- endmacro %}

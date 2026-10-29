@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, post_button %}
+{% block title %}Watchtower · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Operations Watchtower</h1><p>Rule-based checks over the live records. <strong>No statistical or machine-learning anomaly detection is implemented</strong> — each alert names the rule that fired. Thresholds are in <a href="/settings">Settings</a> and are assumptions until the owner sets them.</p></div>
+<div class="actions">{% if can(user['role'], 'alert.manage') %}{{ post_button('/watchtower/scan', csrf, 'Run scan now', 'btn') }}{% endif %}</div></div>
+<div class="grid cols-4"><div class="metric {{ 'warn' if counts.get('critical') }}"><span class="label">Critical</span><span class="value">{{ counts.get('critical', 0) }}</span></div><div class="metric"><span class="label">Warning</span><span class="value">{{ counts.get('warning', 0) }}</span></div><div class="metric"><span class="label">Info</span><span class="value">{{ counts.get('info', 0) }}</span></div></div>
+<form class="filters mt-1" method="get" action="/watchtower">
+<div class="field"><label for="status">Status</label><select id="status" name="status">{% for v, t in [('active','Open / acknowledged'),('resolved','Resolved'),('dismissed','Dismissed'),('','All')] %}<option value="{{ v }}" {{ 'selected' if status == v }}>{{ t }}</option>{% endfor %}</select></div>
+<div class="field"><label for="severity">Severity</label><select id="severity" name="severity"><option value="">All</option>{% for v in ['critical','warning','info'] %}<option {{ 'selected' if sev == v }}>{{ v }}</option>{% endfor %}</select></div>
+<div class="field"><label for="rule">Rule</label><select id="rule" name="rule"><option value="">All</option>{% for k, v in rules.items() %}<option value="{{ k }}" {{ 'selected' if rule == k }}>{{ v }}</option>{% endfor %}</select></div>
+<button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/watchtower">Clear filters</a></form>
+{% if not alerts %}{{ empty('Nothing to show', 'No alerts match. Run a scan to re-check the records.') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>Severity</th><th>Alert</th><th>Rule</th><th>Status</th><th>Assigned</th><th>Detected</th></tr></thead><tbody>
+{% for a in alerts %}<tr id="alert-{{ a.id }}"><td><span class="badge {{ 'err' if a.severity == 'critical' else 'warn' if a.severity == 'warning' else '' }}">{{ a.severity }}</span></td>
+<td><a href="/watchtower/alerts/{{ a.id }}"><strong>{{ a.title }}</strong></a><div class="small muted">{{ a.detail }}</div></td><td class="small">{{ rules.get(a.rule, a.rule) }}</td><td>{{ a.status }}</td><td>{{ a.assignee or '—' }}</td><td class="small">{{ a.detected_at|dt }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% endblock %}

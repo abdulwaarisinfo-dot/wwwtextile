@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, pager %}
+{% block title %}Stock Ledger · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Stock Ledger</h1><p>Append-only. Every stock quantity in the system is the sum of these rows.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="/ledger.csv{{ '?' ~ qs if qs }}">Export CSV (current filters)</a></div>
+</div>
+<form class="filters" method="get" action="/ledger">
+  <div class="field grow"><label for="lot">Lot</label><input id="lot" type="search" name="lot" value="{{ lot }}" placeholder="e.g. DEMO-104"></div>
+  <div class="field"><label for="location">Location</label><select id="location" name="location"><option value="">All</option>{% for l in locations %}<option value="{{ l['id'] }}" {{ 'selected' if loc|string == l['id']|string }}>{{ l['name'] }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="movement">Movement</label><select id="movement" name="movement"><option value="">All</option>{% for m in movements %}<option value="{{ m }}" {{ 'selected' if mv == m }}>{{ m|pretty }}</option>{% endfor %}</select></div>
+  <button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/ledger">Clear filters</a>
+</form>
+{% if not rows %}{{ empty('No ledger rows match') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Posted</th><th>Lot</th><th>Location</th><th class="num">Qty</th><th>Movement</th><th>Source</th><th>Reverses</th><th>By</th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="mono">{{ r['id'] }}</td><td class="small">{{ r['posted_at']|dt }}</td><td><a href="/fabrics/lots/{{ r['lot_no'] }}">{{ r['lot_no'] }}</a></td><td>{{ r['loc_name'] }}</td>
+<td class="num">{{ ('+' if r['qty'] > 0 else '') ~ (r['qty']|qty) }}</td><td>{{ r['movement']|pretty }}</td><td class="mono small">{{ r['source_type'] }}#{{ r['source_id'] }}</td><td>{{ r['reverses_id'] or '—' }}</td><td>{{ r['actor'] or '—' }}</td></tr>{% endfor %}
+</tbody></table></div>
+{{ pager(page, size, count, '/ledger', qs) }}{% endif %}
+{% endblock %}

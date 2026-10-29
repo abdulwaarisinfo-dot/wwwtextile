@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ g.entry_no }} · {% endblock %}
+{% block content %}
+<div class="page-head no-print"><div><h1>Gate entry {{ g.entry_no }}</h1><p>Print preview.</p></div><div class="actions"><button type="button" class="btn" data-print>Print</button><a class="btn btn-secondary" href="/gate/entries/{{ g.id }}">Back</a></div></div>
+<div class="print-sheet"><h1>WW Textile — {{ g.direction|capitalize }} Gate Entry</h1>{% if cfg.env == 'demo' %}<p class="small muted">DEMO DOCUMENT — fictional data</p>{% endif %}
+<p><strong>{{ g.entry_no }}</strong> · status: {{ g.status|pretty }}</p>
+<dl class="kv mb-2"><dt>Vehicle</dt><dd><strong>{{ g.vehicle_no }}</strong></dd><dt>Driver</dt><dd>{{ g.driver_name }} {{ g.driver_phone or '' }}</dd><dt>Party</dt><dd>{{ g.party_name or g.party_text or '—' }}</dd><dt>Material</dt><dd>{{ g.material }}</dd>
+{% if g.declared_qty %}<dt>Declared</dt><dd>{{ g.declared_qty|qty }} {{ g.declared_unit }} (driver's statement)</dd>{% endif %}{% if g.ref_no %}<dt>Reference</dt><dd>{{ g.ref_no }}</dd>{% endif %}
+<dt>Entered</dt><dd>{{ g.entered_at|dt }} by {{ g.entered_by_name }}</dd><dt>Exit</dt><dd>{% if g.exited_at %}{{ g.exited_at|dt }} by {{ g.exited_by_name }}{% else %}Not yet exited{% endif %}</dd></dl>
+<p class="small muted">Security signature: ______________________</p></div>
+{% endblock %}

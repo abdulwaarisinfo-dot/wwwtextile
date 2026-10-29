@@ -1,0 +1,20 @@
+[Unit]
+Description=WW Textile ERP
+After=network.target
+
+[Service]
+User=wwtextile
+Group=wwtextile
+WorkingDirectory=/opt/wwtextile
+EnvironmentFile=/etc/wwtextile/env
+ExecStartPre=/opt/wwtextile/venv/bin/python -m wwtextile.cli init
+ExecStart=/opt/wwtextile/venv/bin/python -m wwtextile.cli serve --host 127.0.0.1 --port 8000
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/wwtextile
+
+[Install]
+WantedBy=multi-user.target

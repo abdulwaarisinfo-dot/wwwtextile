@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, post_button %}
+{% block title %}{{ d.doc_no }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ d.doc_no }} {{ badge(d.status) }}</h1><p>Accessory {{ types.get(d.doc_type)|lower }}</p></div><div class="actions"><a class="btn btn-secondary" href="/accessories/docs">All documents</a></div></div>
+<div class="card"><dl class="kv">
+{% if d.supplier_name %}<dt>Supplier</dt><dd>{{ d.supplier_name }}</dd>{% endif %}{% if d.from_name %}<dt>From</dt><dd>{{ d.from_name }}</dd>{% endif %}{% if d.to_name %}<dt>To</dt><dd>{{ d.to_name }}</dd>{% endif %}
+{% if d.ref_no %}<dt>Reference</dt><dd>{{ ref_types.get(d.ref_type, d.ref_type) }}: {% if d.ref_type == 'processing_job' %}{{ d.ref_no }}{% elif d.ref_type == 'multihead_order' %}{{ d.ref_no }}{% else %}{{ d.ref_no }}{% endif %}</dd>{% endif %}
+{% if d.supplier_ref %}<dt>Supplier ref</dt><dd>{{ d.supplier_ref }}</dd>{% endif %}<dt>Created</dt><dd>{{ d.created_at|dt }} by {{ d.created_by_name }}</dd>
+{% if d.posted_at %}<dt>Posted</dt><dd>{{ d.posted_at|dt }} by {{ d.posted_by_name }}</dd>{% endif %}{% if d.reversed_at %}<dt>Reversed</dt><dd>{{ d.reversed_at|dt }} — {{ d.reversal_reason }}</dd>{% endif %}
+{% if d.notes %}<dt>Notes</dt><dd>{{ d.notes }}</dd>{% endif %}</dl></div>
+<div class="table-wrap"><table><thead><tr><th>Item</th><th class="num">Quantity</th><th>Unit</th></tr></thead><tbody>{% for l in lines %}<tr><td><strong>{{ l.code }}</strong> {{ l.name }}</td><td class="num">{{ l.qty|aqty(l.decimals) }}</td><td>{{ l.unit }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="actions mt-1">
+{% if d.status == 'draft' %}{% if can(user['role'], 'acc.post') %}{{ post_button('/accessories/docs/' ~ d.id ~ '/post', csrf, 'Post', 'btn', confirm='Post ' ~ d.doc_no ~ '? This changes accessory stock.') }}{% endif %}{% if can(user['role'], 'acc.create') %}{{ post_button('/accessories/docs/' ~ d.id ~ '/discard', csrf, 'Discard draft', 'btn btn-danger', confirm='Discard this draft?') }}{% endif %}{% endif %}
+{% if d.status == 'posted' and can(user['role'], 'acc.reverse') %}<form class="inline" method="post" action="/accessories/docs/{{ d.id }}/reverse" data-confirm="Reverse {{ d.doc_no }}? Linked reversing ledger rows are posted."><input type="hidden" name="csrf" value="{{ csrf }}"><input name="reason" placeholder="Reason (required)" required minlength="5" aria-label="Reversal reason"><button class="btn btn-danger" type="submit">Reverse</button></form>{% endif %}</div>
+{% if ledger %}<div class="card mt-1"><h2>Ledger entries</h2><div class="table-wrap"><table><thead><tr><th>#</th><th>Posted</th><th>Item</th><th>Location</th><th>Movement</th><th class="num">Qty</th></tr></thead><tbody>
+{% for a in ledger %}<tr><td>{{ a.id }}</td><td class="small">{{ a.posted_at|dt }}</td><td>{{ a.code }}</td><td>{{ a.loc }}</td><td>{{ a.movement|pretty }}</td><td class="num">{{ a.qty|aqty(a.decimals) }} {{ a.unit }}</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+{% endblock %}

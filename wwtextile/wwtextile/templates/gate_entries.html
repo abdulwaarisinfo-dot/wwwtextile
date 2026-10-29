@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, post_button, empty %}
+{% block title %}Gate entries · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Gate entries</h1><p>Inward vehicles and non-dispatch outward vehicles. Dispatch vehicles use <a href="/gate">gate passes</a>. Gate records do <strong>not</strong> change stock — stock changes only through posted receipts, issues and dispatches.</p></div>
+<div class="actions"><a class="btn btn-secondary" href="/gate">Dispatch gate passes</a><a class="btn btn-secondary" href="/reports/gate-register">Gate register report</a>
+{% if can(user['role'], 'gate.entry.create') %}<a class="btn" href="/gate/entries/new?direction=inward">Record inward</a><a class="btn" href="/gate/entries/new?direction=outward">Record outward</a>{% endif %}</div></div>
+{% if inside %}<div class="card"><h2>Vehicles inside now ({{ inside|length }})</h2><div class="table-wrap"><table><thead><tr><th>Entry</th><th>Vehicle</th><th>Driver</th><th>Material</th><th>Since</th><th></th></tr></thead><tbody>
+{% for g in inside %}<tr><td><a href="/gate/entries/{{ g.id }}">{{ g.entry_no }}</a></td><td class="mono">{{ g.vehicle_no }}</td><td>{{ g.driver_name }}</td><td>{{ g.material }}</td><td class="small">{{ g.entered_at|dt }}</td>
+<td>{% if can(user['role'], 'gate.entry.exit') %}{{ post_button('/gate/entries/' ~ g.id ~ '/exit', csrf, 'Confirm exit', 'btn btn-sm', 'Confirm that ' ~ g.vehicle_no ~ ' has left the premises?', '/gate/entries') }}{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+<form class="filters mt-1" method="get" action="/gate/entries">
+  <div class="field grow"><label for="q">Search entry, vehicle, driver, material, party</label><input id="q" type="search" name="q" value="{{ q }}"></div>
+  <div class="field"><label for="direction">Direction</label><select id="direction" name="direction"><option value="">All</option><option value="inward" {{ 'selected' if d == 'inward' }}>Inward</option><option value="outward" {{ 'selected' if d == 'outward' }}>Outward</option></select></div>
+  <div class="field"><label for="status">Status</label><select id="status" name="status"><option value="">All</option>{% for v in ['awaiting_approval','inside','pending_exit','exited','cancelled'] %}<option value="{{ v }}" {{ 'selected' if s == v }}>{{ v|pretty }}</option>{% endfor %}</select></div>
+  <button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/gate/entries">Clear filters</a></form>
+{% if not rows %}{{ empty('No gate entries', 'Record an inward or outward vehicle.') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>Entry</th><th>Dir.</th><th>Vehicle</th><th>Driver</th><th>Party</th><th>Material</th><th>Status</th><th>Entered</th></tr></thead><tbody>
+{% for g in rows %}<tr><td><a href="/gate/entries/{{ g.id }}">{{ g.entry_no }}</a></td><td>{{ g.direction }}</td><td class="mono">{{ g.vehicle_no }}</td><td>{{ g.driver_name }}</td><td>{{ g.party_name or g.party_text or '—' }}</td><td>{{ g.material }}</td>
+<td>{% if g.status in ('inside','pending_exit') %}<span class="badge solid">{{ g.status|pretty }}</span>{% elif g.status == 'awaiting_approval' %}<span class="badge warn">awaiting approval</span>{% else %}{{ badge(g.status) }}{% endif %}</td><td class="small">{{ g.entered_at|dt }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% endblock %}

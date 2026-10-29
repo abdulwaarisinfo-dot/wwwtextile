@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Accessory items · {% endblock %}
+{% block content %}
+{% set manage = can(user['role'], 'acc.items.manage') %}
+<div class="page-head"><div><h1>Accessory items &amp; locations</h1><p>Unit and decimal setting are fixed after creation (changing them would corrupt history). Items are deactivated, never deleted.</p></div><div class="actions"><a class="btn btn-secondary" href="/accessories">Back to stock</a></div></div>
+{% if manage %}<div class="grid cols-2">
+<form class="card" method="post" action="/accessories/items"><h2>New item</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-grid">{{ field('Code', 'code', ival, ierr, required=True) }}{{ field('Name', 'name', ival, ierr, required=True) }}{{ field('Category', 'category', ival, ierr) }}
+  {{ field('Unit', 'unit', ival, ierr, required=True, hint='pcs, box, kg, cone…') }}
+  <div class="field"><label for="f-decimals">Quantity precision</label><select id="f-decimals" name="decimals"><option value="0">Whole numbers</option><option value="3" {{ 'selected' if ival.get('decimals') == '3' }}>Up to 3 decimals</option></select></div>
+  {{ field('Reorder level', 'reorder_level', ival, ierr, inputmode='decimal', hint='Alert when total stock is at or below this. Blank = no alert.') }}</div>
+  <button class="btn" type="submit">Add item</button></form>
+<form class="card" method="post" action="/accessories/locations"><h2>New location</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ field('Code', 'code', lval, lerr, required=True) }}{{ field('Name', 'name', lval, lerr, required=True) }}<button class="btn" type="submit">Add location</button></form></div>{% endif %}
+<div class="table-wrap mt-1"><table><thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Unit</th><th class="num">Reorder level</th><th>Status</th>{% if manage %}<th>Edit</th>{% endif %}</tr></thead><tbody>
+{% for i in rows %}<tr><td class="mono">{{ i.code }}</td><td>{{ i.name }}</td><td>{{ i.category or '—' }}</td><td>{{ i.unit }}{% if i.decimals == 3 %} (decimals){% endif %}</td><td class="num">{{ i.reorder_level|aqty(i.decimals) if i.reorder_level else '—' }}</td><td>{{ 'active' if i.active else 'inactive' }}</td>
+{% if manage %}<td><form class="inline" method="post" action="/accessories/items/{{ i.id }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+<input name="name" value="{{ i.name }}" aria-label="Name of {{ i.code }}"><input name="reorder_level" value="{{ i.reorder_level|aqty(i.decimals) if i.reorder_level else '' }}" size="6" inputmode="decimal" aria-label="Reorder level of {{ i.code }}" placeholder="reorder">
+<label class="small"><input type="checkbox" name="active" value="1" {{ 'checked' if i.active }}> active</label><button class="btn btn-secondary btn-sm" type="submit">Save</button></form></td>{% endif %}</tr>{% endfor %}</tbody></table></div>
+<div class="card mt-1"><h2>Locations</h2><ul>{% for l in locations %}<li><span class="mono">{{ l.code }}</span> {{ l.name }}{% if not l.active %} (inactive){% endif %}</li>{% endfor %}</ul></div>
+{% endblock %}

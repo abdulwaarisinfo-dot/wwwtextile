@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, post_button, field %}
+{% block title %}{{ d['doc_no'] }} · {% endblock %}
+{% block content %}
+{% set order = ['draft', 'approved', 'pass_issued', 'exited'] %}
+{% set idx = order.index(d['status']) if d['status'] in order else -1 %}
+<div class="page-head">
+  <div><h1>{{ d['doc_no'] }} {{ badge(d['status']) }}</h1><p>To {{ d['customer_name'] }} · created {{ d['created_at']|dt }} by {{ d['created_by_name'] }}</p></div>
+  <div class="actions">
+    {% if d['status'] == 'draft' and can(user['role'], 'dispatch.approve') %}
+      {{ post_button('/dispatch/%d/approve' % d['id'], csrf, 'Approve and reserve stock', 'btn', 'Approve ' ~ d['doc_no'] ~ '? The listed quantities will be reserved.') }}{% endif %}
+    <a class="btn btn-secondary" href="/dispatch">Back to dispatches</a>
+  </div>
+</div>
+{% if errors %}<div class="toast error" role="alert">{% for k, m in errors.items() %}{{ m }} {% endfor %}</div>{% endif %}
+
+{% if d['status'] == 'cancelled' %}
+<div class="notice warn"><strong>Cancelled</strong> {{ d['cancelled_at']|dt }} — {{ d['cancel_reason'] }}</div>
+{% else %}
+<ol class="steps" aria-label="Dispatch progress">
+  {% for key, label in [('draft','1. Draft'),('approved','2. Approved · stock reserved'),('pass_issued','3. Gate pass issued'),('exited','4. Vehicle exit confirmed')] %}
+  <li class="{{ 'current' if loop.index0 == idx else ('done' if loop.index0 < idx else '') }}">{{ label }}</li>{% endfor %}
+</ol>
+{% endif %}
+
+<div class="notice small">
+  <strong>Stock deduction:</strong>
+  {% if d['deducted_at'] %}stock left the ledger at <span class="mono">{{ d['deducted_on'] }}</span> ({{ d['deducted_at']|dt }}).
+  {% else %}not yet deducted. Policy: deduct at <span class="mono">{{ event }}</span> (configurable, placeholder until confirmed). Stock is reserved from approval, so it cannot be promised twice.{% endif %}
+</div>
+
+<div class="card"><h2>Lines</h2>
+<div class="table-wrap"><table><thead><tr><th>Lot</th><th>From</th><th class="num">Quantity</th><th class="num">Currently available</th></tr></thead><tbody>
+{% for l in lines %}<tr><td><a href="/fabrics/lots/{{ l['lot_no'] }}">{{ l['lot_no'] }}</a></td><td>{{ l['location_name'] }}</td><td class="num">{{ l['qty']|qty }} {{ l['unit'] }}</td><td class="num">{{ avail[l['id']]|qty }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% if d['notes'] %}<p class="small muted mt-1">Notes: {{ d['notes'] }}</p>{% endif %}
+{% if d['approved_at'] %}<p class="small muted mt-1">Approved {{ d['approved_at']|dt }} by {{ d['approved_by_name'] }}{% if sep %} (separate approver required){% endif %}.</p>{% endif %}
+</div>
+
+{% if gp %}
+<div class="card"><h2>Gate pass {{ gp['pass_no'] }} {{ badge(gp['status']) }}</h2>
+<dl class="kv"><dt>Vehicle</dt><dd>{{ gp['vehicle_no'] }}</dd><dt>Driver</dt><dd>{{ gp['driver_name'] }}</dd>
+<dt>Issued</dt><dd>{{ gp['issued_at']|dt }} by {{ gp['issued_by_name'] }}</dd>
+{% if gp['exited_at'] %}<dt>Exit confirmed</dt><dd>{{ gp['exited_at']|dt }} by {{ gp['exited_by_name'] }}{% if gp['exit_notes'] %} — {{ gp['exit_notes'] }}{% endif %}</dd>{% endif %}</dl>
+<div class="actions mt-1"><a class="btn btn-secondary btn-sm" href="/gate/passes/{{ gp['id'] }}/print">Print gate pass</a></div>
+{% if gp['status'] == 'issued' and can(user['role'], 'gate.exit.confirm') %}
+<form class="mt-1" method="post" action="/gate/passes/{{ gp['id'] }}/exit" data-confirm="Confirm that vehicle {{ gp['vehicle_no'] }} has physically left the gate with this load?">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/dispatch/{{ d['id'] }}">
+  <div class="inline-fields"><div class="field"><label for="notes">Exit notes (optional)</label><input id="notes" type="text" name="notes"></div><button class="btn" type="submit">Confirm vehicle exit</button></div>
+</form>{% endif %}
+</div>
+{% endif %}
+
+{% if d['status'] == 'approved' and can(user['role'], 'gate.pass.create') %}
+<form class="card w-md" method="post" action="/dispatch/{{ d['id'] }}/gate-pass" data-confirm="Issue a gate pass for this dispatch?">
+  <h2>Issue gate pass</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-grid">{{ field('Vehicle registration', 'vehicle_no', values, errors, required=True) }}{{ field('Driver name', 'driver_name', values, errors, required=True) }}</div>
+  <button class="btn" type="submit">Issue gate pass</button>
+</form>{% endif %}
+
+{% if d['status'] in ('draft', 'approved', 'pass_issued') and can(user['role'], 'dispatch.cancel') %}
+<form class="card w-sm" method="post" action="/dispatch/{{ d['id'] }}/cancel" data-confirm="Cancel this dispatch? Reservations are released and any deducted stock is restored by a linked reversal.">
+  <h2>Cancel dispatch</h2><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="field {{ 'has-error' if errors.get('reason') }}"><label for="reason">Reason</label><input id="reason" type="text" name="reason" required minlength="5" value="{{ values.get('reason', '') or '' }}">
+    {% if errors.get('reason') %}<div class="error">{{ errors['reason'] }}</div>{% endif %}</div>
+  <button class="btn btn-danger" type="submit">Cancel dispatch</button>
+</form>{% endif %}
+{% endblock %}

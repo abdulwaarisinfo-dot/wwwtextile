@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge %}
+{% block title %}Settings · {% endblock %}
+{% block content %}
+{% set editable = can(user['role'], 'settings.edit') %}
+<div class="page-head"><div><h1>Settings</h1><p>Operational rules, roles and system information.</p></div></div>
+
+<form class="card w-md" method="post" action="/settings">
+  <h2>Dispatch stock policy</h2>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p class="muted small">Reservations always apply from dispatch approval. This setting chooses the single event at which stock is deducted from the ledger. <strong>The default is a placeholder until the business confirms the real rule.</strong></p>
+  {% if in_flight %}<div class="notice warn small">{{ in_flight }} dispatch(es) are approved or awaiting exit; the deduction event cannot be changed until they finish or are cancelled.</div>{% endif %}
+  <div class="field checks">
+    {% for e, text in [('dispatch_approval','Deduct when the dispatch is approved'),('gate_pass_issue','Deduct when the gate pass is issued'),('exit_confirm','Deduct when vehicle exit is confirmed')] %}
+    <label><input type="radio" name="deduction_event" value="{{ e }}" {{ 'checked' if s['dispatch.deduction_event'] == e }} {{ 'disabled' if not editable }}> {{ text }}</label>{% endfor %}
+  </div>
+  <div class="field checks"><label><input type="checkbox" name="separate_approver" value="1" {{ 'checked' if s['dispatch.require_separate_approver'] == '1' }} {{ 'disabled' if not editable }}> The approver of a dispatch must be a different person from its creator</label></div>
+  {% if editable %}<button class="btn" type="submit">Save settings</button>{% else %}<p class="small muted">Only an administrator can change these settings.</p>{% endif %}
+</form>
+
+<div class="card"><h2>Roles and permissions <span class="badge warn">proposal — needs owner review</span></h2>
+<div class="table-wrap"><table><thead><tr><th>Permission</th>{% for r in roles %}<th>{{ r|role_label }}</th>{% endfor %}</tr></thead><tbody>
+{% for p in perms %}<tr><td class="mono">{{ p }}</td>{% for r, ps in roles.items() %}<td>{{ '●' if p in ps else '' }}</td>{% endfor %}</tr>{% endfor %}
+</tbody></table></div>
+<p class="small muted mt-1">Enforced on the server for every action. Manage accounts under Administration → Users.</p></div>
+
+<div class="card"><h2>System</h2><dl class="kv">
+  <dt>Version</dt><dd>{{ version }}</dd><dt>Environment</dt><dd>{{ cfg.env }}</dd><dt>Database</dt><dd>SQLite (single node, WAL). Not a production multi-user database.</dd>
+  <dt>Migrations applied</dt><dd class="mono">{{ applied|join(', ') }}</dd><dt>Display time zone</dt><dd>{{ tz_name }} (stored in UTC)</dd></dl></div>
+
+<form class="card w-md mt-1" method="post" action="/settings/registry"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <h2>Operational settings</h2>
+  <p class="muted small">These replace values the business has not defined. Each change is audited. Defaults are assumptions listed in BUSINESS_RULES.md.</p>
+  {% set ns = namespace(group='') %}
+  {% for r in registry %}
+    {% if r.group != ns.group %}{% set ns.group = r.group %}<h3 class="mt-1">{{ r.group }}</h3>{% endif %}
+    <div class="field {{ 'checks' if r.kind == 'bool' }}">
+    {% if r.kind == 'bool' %}<label><input type="checkbox" name="{{ r.key }}" value="1" {{ 'checked' if r.value == '1' }} {{ 'disabled' if not editable }}> {{ r.label }}</label>
+    {% elif r.kind == 'choice' %}<label for="s-{{ r.key }}">{{ r.label }}</label><select id="s-{{ r.key }}" name="{{ r.key }}" {{ 'disabled' if not editable }}>{% for c in r.choices %}<option value="{{ c }}" {{ 'selected' if r.value == c }}>{{ c|pretty }}</option>{% endfor %}</select>
+    {% else %}<label for="s-{{ r.key }}">{{ r.label }}</label><input id="s-{{ r.key }}" name="{{ r.key }}" value="{{ r.value }}" {{ 'disabled' if not editable }}>{% endif %}
+    {% if r.help %}<div class="hint">{{ r.help }}</div>{% endif %}</div>
+  {% endfor %}
+  {% if editable %}<button class="btn" type="submit">Save operational settings</button>{% endif %}
+</form>
+{% endblock %}

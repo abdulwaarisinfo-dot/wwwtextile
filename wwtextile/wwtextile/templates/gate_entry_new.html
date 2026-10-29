@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Record {{ direction }} vehicle · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Record {{ direction }} vehicle</h1><p>{% if direction == 'inward' %}The vehicle is recorded as inside until its exit is confirmed. This does not receive stock; post a goods receipt for that.{% else %}Outward entries need approval before exit (setting). This does not deduct stock.{% endif %}</p></div>
+<div class="actions"><a class="btn btn-secondary btn-sm" href="/gate/entries/new?direction=inward">Inward</a><a class="btn btn-secondary btn-sm" href="/gate/entries/new?direction=outward">Outward</a></div></div>
+{% if errors %}<div class="toast error" role="alert">Please correct the highlighted fields.</div>{% endif %}
+<form class="card w-md" method="post" action="/gate/entries"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="direction" value="{{ direction }}">
+<div class="form-grid">
+{{ field('Vehicle number', 'vehicle_no', values, errors, required=True) }}{{ field('Driver name', 'driver_name', values, errors, required=True) }}{{ field('Driver phone', 'driver_phone', values, errors) }}
+<div class="field {{ 'has-error' if errors.party_id }}"><label for="f-party_id">Party (if on file)</label><select id="f-party_id" name="party_id"><option value="">None / other</option>{% for p in parties %}<option value="{{ p.id }}" {{ 'selected' if values.get('party_id')|string == p.id|string }}>{{ p.name }}</option>{% endfor %}</select>{% if errors.party_id %}<div class="error">{{ errors.party_id }}</div>{% endif %}</div>
+{{ field('Party (free text)', 'party_text', values, errors, hint='Required if no party is chosen above.') }}
+{{ field('Material', 'material', values, errors, required=True, full=True) }}
+{{ field('Declared quantity', 'declared_qty', values, errors, inputmode='decimal', hint='Optional. As stated by the driver; not verified.') }}{{ field('Declared unit', 'declared_unit', values, errors) }}
+<div class="field {{ 'has-error' if errors.ref_type }}"><label for="f-ref_type">Related record (optional)</label><select id="f-ref_type" name="ref_type"><option value="">None</option>{% for k, v in ref_types.items() %}<option value="{{ k }}" {{ 'selected' if values.get('ref_type') == k }}>{{ v }}</option>{% endfor %}</select>{% if errors.ref_type %}<div class="error">{{ errors.ref_type }}</div>{% endif %}</div>
+{{ field('Reference number', 'ref_no', values, errors, hint='Checked against existing records when the type is a receipt, issue or accessory document.') }}
+<div class="field full"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes">{{ values.get('notes', '') or '' }}</textarea></div></div>
+<div class="actions"><button class="btn" type="submit">Record entry</button><a class="btn btn-secondary" href="/gate/entries">Cancel</a></div></form>
+{% endblock %}

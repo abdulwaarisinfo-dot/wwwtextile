@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ status.name }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ status.name }} — Assistant</h1>
+<p>Ask about operations in plain English, by typing or speaking. It answers only from your system's records, shows the records it used, and can prepare <strong>drafts</strong> — it never posts, approves, issues gate passes or changes stock.</p></div>
+<div class="actions"><button type="button" class="btn btn-secondary" id="a-new">New conversation</button></div></div>
+<div class="notice small" id="a-engine">
+  Understanding: <strong>{{ 'AI model (' ~ status.llm.provider ~ ' / ' ~ status.llm.model ~ ')' if status.llm.configured else 'built-in rules only' }}</strong>
+  {% if not status.llm.configured %}— no AI provider is configured, so only the question patterns listed below are understood; anything else gets an honest “can't map that”. {% endif %}
+  · Speech to text: <strong>{{ 'server (' ~ status.stt.provider ~ ')' if status.stt.configured else 'browser only' }}</strong> · Spoken replies: <strong>{{ 'server voice' if status.tts.configured else 'browser voice' }}</strong>.
+  Conversations are kept as text for {{ status.retention_days }} days; audio is never stored.
+</div>
+<div class="card assistant" id="a-card" data-cid="{{ cid or '' }}" data-name="{{ status.name }}" data-voice="{{ '1' if voice_ok else '0' }}" data-stt-server="{{ '1' if status.stt.configured else '0' }}" data-tts-server="{{ '1' if status.tts.configured else '0' }}">
+  <div id="log" class="a-log" aria-live="polite" aria-label="Conversation">
+    {% for m in msgs %}<div class="a-msg {{ m.role }}"><div class="a-who">{{ 'You' if m.role == 'user' else status.name }}{% if m.channel == 'voice' %} · voice{% endif %}</div><div class="a-text">{{ m.content }}</div>
+      {% if m.role == 'assistant' and m.meta %}{% for e in m.meta.evidence or [] %}<a class="a-chip" href="{{ e.url }}">{{ e.label }}</a>{% endfor %}{% for d in m.meta.drafts or [] %}<a class="a-chip" href="{{ d.url }}">{{ d.label }}</a>{% endfor %}{% endif %}</div>
+    {% else %}<div class="muted small" id="a-empty">No messages yet. Try one of the examples below.</div>{% endfor %}
+  </div>
+  <form id="a-form" method="post" action="/assistant" class="a-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="conversation_id" value="{{ cid or '' }}" id="a-cid">
+    <label for="a-text" class="sr-only">Message</label>
+    <input id="a-text" name="text" maxlength="500" autocomplete="off" placeholder="Ask {{ status.name }}…" required>
+    <button class="btn" type="submit" id="a-send">Send</button>
+    {% if voice_ok %}<button class="btn btn-secondary" type="button" id="a-mic" hidden aria-pressed="false">Hold to talk</button>{% endif %}
+  </form>
+  {% if voice_ok %}<div class="a-voice small" id="a-voice" hidden>
+    <span id="a-voice-state" class="muted" role="status">Voice ready.</span>
+    <label><input type="checkbox" id="a-speak"> Speak replies</label>
+    <label><input type="checkbox" id="a-wake"> Listen for “{{ status.name }}” while this page is open</label>
+    <label for="a-lang" class="sr-only">Speech language</label><select id="a-lang" aria-label="Speech language"><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="en-IN">English (India)</option><option value="ur-PK">Urdu (Pakistan)</option></select>
+    <p class="muted" id="a-voice-note">Browser speech recognition may send your audio to the browser vendor's service (for example Google in Chrome). Urdu and Roman Urdu are understood for the common questions (stock, losses, late jobs, money owed, cash, Multihead, gate, dispatch, alerts); with an AI model connected, any Urdu. Urdu speech recognition and spoken replies depend on your browser and its installed voices.</p>
+  </div>{% endif %}
+</div>
+<div class="card flat"><h2>Try</h2><div class="a-examples">{% for ex in examples %}<button type="button" class="btn btn-secondary btn-sm" data-example="{{ ex }}">{{ ex }}</button>{% endfor %}</div>
+<p class="small muted mt-1">Follow-ups work within a conversation: “open the oldest one”, “why is it delayed”, “where did it go next”. If something is ambiguous it asks which one you mean. Without an AI provider the rule engine understands: factory/daily updates, overdue jobs, jobs awaiting results, discrepancies, lot history, gate entries, dispatches, receipts, accessory stock, finance summary, alerts, reports, supplier follow-up drafts, and preparing draft jobs/issues/results/receipts/dispatches.</p></div>
+<script type="application/json" id="a-history">{{ msgs|tojson }}</script>
+<script src="/static/assistant.js" defer></script>
+{% endblock %}

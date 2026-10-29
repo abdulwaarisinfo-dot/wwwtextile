@@ -1,0 +1,14 @@
+[Unit]
+Description=WW Textile nightly backup, watchtower scan and retention purge
+
+[Service]
+Type=oneshot
+User=wwtextile
+EnvironmentFile=/etc/wwtextile/env
+WorkingDirectory=/opt/wwtextile
+ExecStart=/opt/wwtextile/venv/bin/python -m wwtextile.cli backup /var/backups/wwtextile
+ExecStart=/opt/wwtextile/venv/bin/python -m wwtextile.cli check
+ExecStart=/opt/wwtextile/venv/bin/python -m wwtextile.cli scan
+ExecStart=/opt/wwtextile/venv/bin/python -m wwtextile.cli purge
+ExecStart=/usr/bin/find /var/backups/wwtextile -maxdepth 1 -mtime +30 -name 'wwtextile-*' -exec rm -rf {} +
+ReadWritePaths=/var/lib/wwtextile /var/backups/wwtextile

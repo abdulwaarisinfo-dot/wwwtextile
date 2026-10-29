@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, empty %}
+{% block title %}Dispatch · {% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Dispatch</h1><p>Draft → approved (stock reserved) → gate pass → vehicle exit.</p></div>
+  <div class="actions">{% if can(user['role'], 'dispatch.create') %}<a class="btn" href="/dispatch/new">New dispatch</a>{% endif %}</div>
+</div>
+<form class="filters" method="get" action="/dispatch">
+  <div class="field grow"><label for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Dispatch or customer"></div>
+  <div class="field"><label for="status">Status</label><select id="status" name="status"><option value="">All</option>
+    {% for s in ['draft','approved','pass_issued','exited','cancelled'] %}<option value="{{ s }}" {{ 'selected' if status == s }}>{{ s|pretty|capitalize }}</option>{% endfor %}</select></div>
+  <button class="btn" type="submit">Apply</button><a class="btn btn-secondary" href="/dispatch">Clear filters</a>
+</form>
+{% if not rows %}{{ empty('No dispatches match', 'Finished stock can be dispatched once a processing result has been posted.') }}{% else %}
+<div class="table-wrap"><table><thead><tr><th>Dispatch</th><th>Customer</th><th class="num">Total qty</th><th>Status</th><th>Stock deducted</th><th>Created</th></tr></thead><tbody>
+{% for d in rows %}<tr><td><a href="/dispatch/{{ d['id'] }}">{{ d['doc_no'] }}</a></td><td>{{ d['customer_name'] }}</td><td class="num">{{ d['total_qty']|qty }}</td><td>{{ badge(d['status']) }}</td>
+<td>{% if d['deducted_at'] %}{{ d['deducted_on']|pretty }}{% else %}<span class="muted">not yet</span>{% endif %}</td><td class="small">{{ d['created_at']|dt }}</td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
+{% endblock %}

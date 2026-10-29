@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge %}
+{% block title %}{{ gp['pass_no'] }} · {% endblock %}
+{% block content %}
+<div class="page-head no-print"><div><h1>Gate pass {{ gp['pass_no'] }}</h1><p>Print preview.</p></div>
+  <div class="actions"><button type="button" class="btn" data-print>Print</button><a class="btn btn-secondary" href="/dispatch/{{ d['id'] }}">Back to dispatch</a></div></div>
+<div class="print-sheet">
+  <h1>WW Textile — Outward Gate Pass</h1>
+  {% if cfg.env == 'demo' %}<p class="small muted">DEMO DOCUMENT — fictional data</p>{% endif %}
+  <p><strong>{{ gp['pass_no'] }}</strong> · status: {{ gp['status'] }}</p>
+  <dl class="kv mb-2">
+    <dt>Dispatch</dt><dd>{{ d['doc_no'] }}</dd><dt>Customer</dt><dd>{{ d['customer_name'] }}</dd>
+    <dt>Vehicle</dt><dd><strong>{{ gp['vehicle_no'] }}</strong></dd><dt>Driver</dt><dd>{{ gp['driver_name'] }}</dd>
+    <dt>Issued</dt><dd>{{ gp['issued_at']|dt }} by {{ gp['issued_by_name'] }}</dd>
+    <dt>Exit confirmed</dt><dd>{% if gp['exited_at'] %}{{ gp['exited_at']|dt }} by {{ gp['exited_by_name'] }}{% else %}Not yet — verify at gate{% endif %}</dd>
+  </dl>
+  <table><thead><tr><th>Lot</th><th>From</th><th class="num">Quantity</th></tr></thead><tbody>
+  {% for l in lines %}<tr><td>{{ l['lot_no'] }}</td><td>{{ l['location_name'] }}</td><td class="num">{{ l['qty']|qty }} {{ l['unit'] }}</td></tr>{% endfor %}</tbody></table>
+  <p class="small muted mt-1">Pass issued {{ gp['issued_at']|dt }} · Security signature: ______________________</p>
+</div>
+{% endblock %}

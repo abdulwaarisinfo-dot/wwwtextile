@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}{{ spec.title }} · {% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ spec.title }}</h1><p>{{ spec.desc }}</p></div>
+<div class="actions no-print"><a class="btn btn-secondary" href="/reports">All reports</a>
+{% if res %}<button type="button" class="btn btn-secondary" data-print>Print</button><a class="btn" href="/reports/{{ key }}?{{ qs ~ '&' if qs }}format=csv">Download CSV</a>{% endif %}</div></div>
+{% if err %}<div class="toast error" role="alert">{{ err }}</div>{% endif %}
+<form class="filters no-print" method="get" action="/reports/{{ key }}"><input type="hidden" name="run" value="1">
+{% for k, label, typ, opts in fields %}<div class="field {{ 'grow' if typ == 'text' }}"><label for="rf-{{ k }}">{{ label }}</label>
+{% if typ == 'date' %}<input id="rf-{{ k }}" type="date" name="{{ k }}" value="{{ values.get(k, '') }}">
+{% elif opts is not none %}<select id="rf-{{ k }}" name="{{ k }}"><option value="">All</option>{% for v, t in opts %}<option value="{{ v }}" {{ 'selected' if values.get(k, '') == v|string }}>{{ t }}</option>{% endfor %}</select>
+{% else %}<input id="rf-{{ k }}" type="search" name="{{ k }}" value="{{ values.get(k, '') }}">{% endif %}</div>{% endfor %}
+<button class="btn" type="submit">{{ 'Run report' if fields else 'Refresh' }}</button><a class="btn btn-secondary" href="/reports/{{ key }}">Clear filters</a></form>
+{% if res %}
+<p class="small muted">{{ res.rows|length }} row(s){% if res.filters_applied %} · filters: {% for k, v in res.filters_applied.items() %}{{ k }}={{ v }}{{ ', ' if not loop.last }}{% endfor %}{% endif %} · generated {{ res.generated_at|dt }} ({{ tz_name }}) by {{ res.generated_by }}</p>
+{% if res.truncated %}<div class="notice warn"><strong>Truncated.</strong> Only the first {{ res.rows|length }} rows are shown and exported. Narrow the filters.</div>{% endif %}
+{% for n in res.notes or [] %}<div class="notice small">{{ n }}</div>{% endfor %}
+{% if not res.rows %}{{ empty('No rows match these filters') }}{% else %}
+<div class="table-wrap"><table><thead><tr>{% for k, label, kind in res.columns %}<th class="{{ 'num' if kind in ['qty','money','int','pct2'] }}">{{ label }}</th>{% endfor %}</tr></thead><tbody>
+{% for r in res.rows %}<tr>{% for k, label, kind in res.columns %}<td class="{{ 'num' if kind in ['qty','money','int','pct2'] }}">{% if loop.first and r._url %}<a href="{{ r._url }}">{{ rfmt(kind, r.get(k)) }}</a>{% else %}{{ rfmt(kind, r.get(k)) }}{% endif %}</td>{% endfor %}</tr>{% endfor %}
+{% for t in res.totals %}<tr class="total-row"><td>{{ t.label }}</td>{% for k, label, kind in res.columns[1:] %}<td class="{{ 'num' if kind in ['qty','money','int','pct2'] }}">{% if k in t['values'] %}{{ rfmt(kind, t['values'][k]) }}{% endif %}</td>{% endfor %}</tr>{% endfor %}
+</tbody></table></div>{% endif %}
+{% else %}<div class="empty"><strong>Set filters and run the report</strong></div>{% endif %}
+{% endblock %}
